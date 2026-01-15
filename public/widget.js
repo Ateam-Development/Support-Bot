@@ -29,7 +29,7 @@
     // Create iframe
     var iframe = document.createElement('iframe');
     iframe.src = baseUrl + '/widget/' + chatbotId;
-    iframe.style.cssText = 'border: none; width: 100%; height: 100%; pointer-events: auto; border-radius: 16px; background-color: transparent;';
+    iframe.style.cssText = 'border: none; width: 100%; height: 100%; pointer-events: auto; border-radius: 50%; background-color: transparent;';
     iframe.setAttribute('allow', 'clipboard-write');
 
     container.appendChild(iframe);
