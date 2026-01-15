@@ -13,7 +13,7 @@ export async function PUT(request, { params }) {
         if (authResult.error) return authResult.error;
 
         const { user } = authResult;
-        const { chatbotId, sectionId } = params;
+        const { chatbotId, sectionId } = await params;
         const sectionData = await request.json();
 
         const ownershipResult = await verifyChatbotOwnership(chatbotId, user.uid);
@@ -40,7 +40,7 @@ export async function DELETE(request, { params }) {
         if (authResult.error) return authResult.error;
 
         const { user } = authResult;
-        const { chatbotId, sectionId } = params;
+        const { chatbotId, sectionId } = await params;
 
         const ownershipResult = await verifyChatbotOwnership(chatbotId, user.uid);
         if (ownershipResult.error) return ownershipResult.error;

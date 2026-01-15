@@ -16,7 +16,7 @@ const { handleApiError } = require('@/lib/api-utils');
  */
 export async function POST(request, { params }) {
     try {
-        const { chatbotId } = params;
+        const { chatbotId } = await params;
         const { message, conversationId } = await request.json();
 
         // Optional authentication

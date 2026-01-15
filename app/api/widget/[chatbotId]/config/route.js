@@ -8,7 +8,7 @@ const { handleApiError } = require('@/lib/api-utils');
  */
 export async function GET(request, { params }) {
     try {
-        const { chatbotId } = params;
+        const { chatbotId } = await params;
 
         const chatbot = await getChatbotById(chatbotId);
 

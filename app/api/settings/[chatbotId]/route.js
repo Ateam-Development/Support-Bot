@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
         }
 
         const { user } = authResult;
-        const { chatbotId } = params;
+        const { chatbotId } = await params;
 
         // Verify ownership
         const ownershipResult = await verifyChatbotOwnership(chatbotId, user.uid);
@@ -57,7 +57,7 @@ export async function PUT(request, { params }) {
         }
 
         const { user } = authResult;
-        const { chatbotId } = params;
+        const { chatbotId } = await params;
         const { apiKeys, teamMembers } = await request.json();
 
         // Verify ownership

@@ -16,7 +16,7 @@ export async function DELETE(request, { params }) {
         }
 
         const { user } = authResult;
-        const { chatbotId, knowledgeId } = params;
+        const { chatbotId, knowledgeId } = await params;
 
         // Verify ownership
         const ownershipResult = await verifyChatbotOwnership(chatbotId, user.uid);
