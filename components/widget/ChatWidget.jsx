@@ -39,7 +39,7 @@ const ChatWidget = ({ chatbotId }) => {
 
     const themeColors = {
         black: {
-            '--w-bg': 'rgba(26, 26, 26, 0.95)', // Slight transparency for glassmorphism
+            '--w-bg': 'rgba(26, 26, 26, 0.95)',
             '--w-bg-sec': 'rgba(10, 10, 10, 0.6)',
             '--w-text': '#ffffff',
             '--w-text-sec': 'rgba(255,255,255,0.6)',
@@ -52,17 +52,17 @@ const ChatWidget = ({ chatbotId }) => {
             '--w-shadow': '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
         },
         white: {
-            '--w-bg': 'rgba(255, 255, 255, 0.95)',
-            '--w-bg-sec': 'rgba(249, 249, 249, 0.8)',
+            '--w-bg': '#ffffff', // Pure white, no transparency to avoid silver look
+            '--w-bg-sec': '#fafafa', // Very light gray for sections/footer
             '--w-text': '#18181b',
             '--w-text-sec': '#71717a',
-            '--w-border': 'rgba(0,0,0,0.06)',
-            '--w-input-bg': 'rgba(0,0,0,0.04)',
+            '--w-border': '#e4e4e7', // Cleaner border
+            '--w-input-bg': '#f4f4f5',
             '--w-msg-ast-bg': '#f4f4f5',
             '--w-msg-ast-txt': '#18181b',
-            '--w-hover': 'rgba(0,0,0,0.04)',
-            '--w-scroll': 'rgba(0,0,0,0.1)',
-            '--w-shadow': '0 25px 50px -12px rgba(0, 0, 0, 0.15)'
+            '--w-hover': '#f4f4f5',
+            '--w-scroll': '#d4d4d8',
+            '--w-shadow': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' // Softer shadow
         }
     };
 
@@ -147,12 +147,13 @@ const ChatWidget = ({ chatbotId }) => {
                 }, '*');
             } else {
                 // Delay close to allow exit animation to finish
+                // Increased delay to 400ms to allow 300ms animation to complete fully without flicker
                 const timer = setTimeout(() => {
                     window.parent.postMessage({
                         type: 'oneminute-widget-resize',
                         isOpen: false
                     }, '*');
-                }, 300);
+                }, 400);
                 return () => clearTimeout(timer);
             }
         }
