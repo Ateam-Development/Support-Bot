@@ -33,6 +33,33 @@ const ChatWidget = ({ chatbotId }) => {
         red: '#dc2626',
     };
 
+    const themeColors = {
+        black: {
+            '--w-bg': '#1a1a1a',
+            '--w-bg-sec': '#0a0a0a',
+            '--w-text': '#ffffff',
+            '--w-text-sec': 'rgba(255,255,255,0.6)',
+            '--w-border': 'rgba(255,255,255,0.1)',
+            '--w-input-bg': 'rgba(255,255,255,0.1)',
+            '--w-msg-ast-bg': '#ffffff',
+            '--w-msg-ast-txt': '#1a1a1a',
+            '--w-hover': 'rgba(255,255,255,0.1)',
+            '--w-scroll': 'rgba(255,255,255,0.2)'
+        },
+        white: {
+            '--w-bg': '#ffffff',
+            '--w-bg-sec': '#f9f9f9',
+            '--w-text': '#18181b',
+            '--w-text-sec': '#71717a',
+            '--w-border': 'rgba(0,0,0,0.1)',
+            '--w-input-bg': 'rgba(0,0,0,0.05)',
+            '--w-msg-ast-bg': '#f4f4f5',
+            '--w-msg-ast-txt': '#18181b',
+            '--w-hover': 'rgba(0,0,0,0.05)',
+            '--w-scroll': 'rgba(0,0,0,0.2)'
+        }
+    };
+
     const [visitorId, setVisitorId] = useState('');
 
     useEffect(() => {
@@ -203,11 +230,12 @@ const ChatWidget = ({ chatbotId }) => {
     };
 
     const primaryColor = config ? colorMap[config.primaryColor] || colorMap.blue : colorMap.blue;
+    const currentTheme = config ? themeColors[(config.theme || 'black').toLowerCase()] || themeColors.black : themeColors.black;
 
     if (!config) return null;
 
     return (
-        <div className="widget-container">
+        <div className="widget-container" style={currentTheme}>
             <AnimatePresence mode="wait">
                 {!isOpen && (
                     <motion.button
@@ -480,13 +508,13 @@ const ChatWidget = ({ chatbotId }) => {
                     width: 380px;
                     height: 600px;
                     max-height: 80vh;
-                    background: #1a1a1a;
+                    background: var(--w-bg);
                     border-radius: 16px;
                     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
-                    border: 1px solid rgba(255,255,255,0.05);
+                    border: 1px solid var(--w-border);
                 }
 
                 .widget-header {
@@ -555,7 +583,7 @@ const ChatWidget = ({ chatbotId }) => {
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
-                    background: #1a1a1a;
+                    background: var(--w-bg);
                     position: relative;
                 }
 
@@ -577,7 +605,7 @@ const ChatWidget = ({ chatbotId }) => {
                 }
 
                 .widget-messages::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.2);
+                    background: var(--w-scroll);
                     border-radius: 3px;
                 }
 
@@ -616,8 +644,8 @@ const ChatWidget = ({ chatbotId }) => {
                 }
 
                 .widget-message-bubble.assistant {
-                    background: white;
-                    color: #1a1a1a;
+                    background: var(--w-msg-ast-bg);
+                    color: var(--w-msg-ast-txt);
                     border-radius: 12px 12px 12px 4px;
                 }
 
@@ -636,16 +664,16 @@ const ChatWidget = ({ chatbotId }) => {
                 .widget-section-chip {
                     padding: 6px 12px;
                     border-radius: 16px;
-                    background: rgba(255,255,255,0.1);
-                    color: white;
-                    border: 1px solid rgba(255,255,255,0.2);
+                    background: var(--w-input-bg);
+                    color: var(--w-text);
+                    border: 1px solid var(--w-border);
                     font-size: 12px;
                     cursor: pointer;
                     transition: all 0.2s;
                 }
 
                 .widget-section-chip:hover {
-                    background: rgba(255,255,255,0.2);
+                    background: var(--w-hover);
                 }
 
                 .widget-section-chip.active {
@@ -656,7 +684,7 @@ const ChatWidget = ({ chatbotId }) => {
                     display: flex;
                     gap: 4px;
                     padding: 12px 16px;
-                    background: white;
+                    background: var(--w-msg-ast-bg);
                     border-radius: 12px 12px 12px 4px;
                 }
 
@@ -678,8 +706,8 @@ const ChatWidget = ({ chatbotId }) => {
 
                 .widget-input-container {
                     padding: 16px;
-                    background: #0a0a0a;
-                    border-top: 1px solid rgba(255,255,255,0.1);
+                    background: var(--w-bg-sec);
+                    border-top: 1px solid var(--w-border);
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
@@ -689,11 +717,11 @@ const ChatWidget = ({ chatbotId }) => {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    background: rgba(255,255,255,0.1);
+                    background: var(--w-input-bg);
                     padding: 4px 8px;
                     border-radius: 6px;
                     font-size: 11px;
-                    color: #a1a1aa;
+                    color: var(--w-text-sec);
                 }
                 
                 .widget-input-section-badge button {
@@ -716,17 +744,17 @@ const ChatWidget = ({ chatbotId }) => {
 
                 .widget-input {
                     flex: 1;
-                    background: rgba(255,255,255,0.1);
-                    border: 1px solid rgba(255,255,255,0.2);
+                    background: var(--w-input-bg);
+                    border: 1px solid var(--w-border);
                     border-radius: 8px;
                     padding: 10px 12px;
-                    color: white;
+                    color: var(--w-text);
                     font-size: 14px;
                     outline: none;
                 }
 
                 .widget-input::placeholder {
-                    color: rgba(255,255,255,0.5);
+                    color: var(--w-text-sec);
                 }
 
                 .widget-send-btn {
@@ -748,7 +776,7 @@ const ChatWidget = ({ chatbotId }) => {
                 }
                 
                 .widget-send-btn:hover {
-                    background: rgba(255,255,255,0.1);
+                    background: var(--w-hover);
                 }
 
                 /* Tab Bar */
@@ -756,8 +784,8 @@ const ChatWidget = ({ chatbotId }) => {
                     display: flex;
                     justify-content: space-around;
                     padding: 12px;
-                    background: #0a0a0a;
-                    border-top: 1px solid rgba(255,255,255,0.1);
+                    background: var(--w-bg-sec);
+                    border-top: 1px solid var(--w-border);
                 }
 
                 .widget-tab-btn {
@@ -767,13 +795,13 @@ const ChatWidget = ({ chatbotId }) => {
                     gap: 4px;
                     background: none;
                     border: none;
-                    color: #71717a;
+                    color: var(--w-text-sec);
                     cursor: pointer;
                     transition: color 0.2s;
                 }
 
                 .widget-tab-btn:hover {
-                    color: #a1a1aa;
+                    color: var(--w-text);
                 }
 
                 .widget-tab-btn.active {
@@ -789,8 +817,8 @@ const ChatWidget = ({ chatbotId }) => {
                     padding: 8px 10px 12px;
                     text-align: center;
                     font-size: 10px;
-                    color: rgba(255,255,255,0.3);
-                    background: #0a0a0a;
+                    color: var(--w-text-sec);
+                    background: var(--w-bg-sec);
                 }
 
                 @media (max-width: 480px) {
