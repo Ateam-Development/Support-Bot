@@ -64,13 +64,14 @@ const ChatWidget = ({ chatbotId }) => {
     }, [config]);
 
     // Initialize Live Chat Welcome Message (only if no real-time messages)
+    // Initialize Live Chat Welcome Message
     useEffect(() => {
         if (config && liveMessages.length === 0 && !liveConversationId) {
             setLiveMessages([
                 {
-                    id: 'live-welcome',
+                    id: 'live-initial-welcome',
                     role: 'assistant',
-                    content: "Hello! A support agent will be with you shortly. How can we help you?",
+                    content: "Hello! How can we help you today?",
                     type: 'live'
                 }
             ]);
