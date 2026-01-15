@@ -134,10 +134,22 @@ const ChatWidget = ({ chatbotId }) => {
     // Notify parent window about resize needs
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            window.parent.postMessage({
-                type: 'oneminute-widget-resize',
-                isOpen: isOpen
-            }, '*');
+            if (isOpen) {
+                // Open immediately
+                window.parent.postMessage({
+                    type: 'oneminute-widget-resize',
+                    isOpen: true
+                }, '*');
+            } else {
+                // Delay close to allow exit animation to finish
+                const timer = setTimeout(() => {
+                    window.parent.postMessage({
+                        type: 'oneminute-widget-resize',
+                        isOpen: false
+                    }, '*');
+                }, 300); // 300ms delay matches approximate spring duration
+                return () => clearTimeout(timer);
+            }
         }
     }, [isOpen]);
 
