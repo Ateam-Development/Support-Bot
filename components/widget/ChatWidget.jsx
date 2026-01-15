@@ -25,6 +25,9 @@ const ChatWidget = ({ chatbotId }) => {
     const [liveConversationId, setLiveConversationId] = useState(null);
     const liveMessagesEndRef = useRef(null);
 
+    // Mobile Detection
+    const [isMobile, setIsMobile] = useState(false);
+
     // Color mapping
     const colorMap = {
         blue: '#2563eb',
@@ -36,30 +39,30 @@ const ChatWidget = ({ chatbotId }) => {
 
     const themeColors = {
         black: {
-            '--w-bg': '#1a1a1a',
-            '--w-bg-sec': '#0a0a0a',
+            '--w-bg': 'rgba(26, 26, 26, 0.95)', // Slight transparency for glassmorphism
+            '--w-bg-sec': 'rgba(10, 10, 10, 0.6)',
             '--w-text': '#ffffff',
             '--w-text-sec': 'rgba(255,255,255,0.6)',
-            '--w-border': 'rgba(255,255,255,0.1)',
-            '--w-input-bg': 'rgba(255,255,255,0.1)',
-            '--w-msg-ast-bg': '#ffffff',
+            '--w-border': 'rgba(255,255,255,0.08)',
+            '--w-input-bg': 'rgba(255,255,255,0.08)',
+            '--w-msg-ast-bg': 'rgba(255,255,255,0.95)',
             '--w-msg-ast-txt': '#1a1a1a',
             '--w-hover': 'rgba(255,255,255,0.1)',
-            '--w-scroll': 'rgba(255,255,255,0.2)',
-            '--w-shadow': '0 8px 32px rgba(0,0,0,0.3)'
+            '--w-scroll': 'rgba(255,255,255,0.15)',
+            '--w-shadow': '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
         },
         white: {
-            '--w-bg': '#ffffff',
-            '--w-bg-sec': '#f9f9f9',
+            '--w-bg': 'rgba(255, 255, 255, 0.95)',
+            '--w-bg-sec': 'rgba(249, 249, 249, 0.8)',
             '--w-text': '#18181b',
             '--w-text-sec': '#71717a',
-            '--w-border': 'rgba(0,0,0,0.1)',
-            '--w-input-bg': 'rgba(0,0,0,0.05)',
+            '--w-border': 'rgba(0,0,0,0.06)',
+            '--w-input-bg': 'rgba(0,0,0,0.04)',
             '--w-msg-ast-bg': '#f4f4f5',
             '--w-msg-ast-txt': '#18181b',
-            '--w-hover': 'rgba(0,0,0,0.05)',
-            '--w-scroll': 'rgba(0,0,0,0.2)',
-            '--w-shadow': '0 8px 32px rgba(0,0,0,0.1)'
+            '--w-hover': 'rgba(0,0,0,0.04)',
+            '--w-scroll': 'rgba(0,0,0,0.1)',
+            '--w-shadow': '0 25px 50px -12px rgba(0, 0, 0, 0.15)'
         }
     };
 
@@ -73,6 +76,12 @@ const ChatWidget = ({ chatbotId }) => {
             localStorage.setItem('oneminute_visitor_id', storedId);
         }
         setVisitorId(storedId);
+
+        // Check mobile
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
     useEffect(() => {
@@ -143,7 +152,7 @@ const ChatWidget = ({ chatbotId }) => {
                         type: 'oneminute-widget-resize',
                         isOpen: false
                     }, '*');
-                }, 300); // 300ms delay matches approximate spring duration
+                }, 300);
                 return () => clearTimeout(timer);
             }
         }
@@ -186,7 +195,7 @@ const ChatWidget = ({ chatbotId }) => {
                     message: currentInput,
                     sectionId: activeSection?.id || null,
                     conversationId: aiConversationId,
-                    visitorId: visitorId // Send permanent ID
+                    visitorId: visitorId
                 })
             });
 
@@ -248,6 +257,19 @@ const ChatWidget = ({ chatbotId }) => {
     const primaryColor = config ? colorMap[config.primaryColor] || colorMap.blue : colorMap.blue;
     const currentTheme = config ? themeColors[(config.theme || 'black').toLowerCase()] || themeColors.black : themeColors.black;
 
+    // Animation Variants
+    const desktopVariants = {
+        hidden: { opacity: 0, scale: 0.9, y: 20 },
+        visible: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.9, y: 20 }
+    };
+
+    const mobileVariants = {
+        hidden: { opacity: 0, y: '100%' },
+        visible: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: '100%' }
+    };
+
     if (!config) return null;
 
     return (
@@ -276,29 +298,29 @@ const ChatWidget = ({ chatbotId }) => {
                 {isOpen && (
                     <motion.div
                         key="chat-window"
-                        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 40, scale: 0.95, transition: { duration: 0.2 } }}
-                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        variants={isMobile ? mobileVariants : desktopVariants}
+                        transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
                         className="widget-chat-window"
-                        style={{ boxShadow: currentTheme['--w-shadow'] }} // Apply theme shadow
                     >
                         {/* Header */}
-                        <div className="widget-header" style={{ backgroundColor: primaryColor }}>
+                        <div className="widget-header">
                             <div className="widget-header-content">
                                 <div className="widget-avatar-small">
-                                    {activeTab === 'home' ? <MessageCircle size={20} color="white" /> : <Headset size={20} color="white" />}
+                                    {activeTab === 'home' ? <MessageCircle size={22} color="white" strokeWidth={2} /> : <Headset size={22} color="white" strokeWidth={2} />}
                                 </div>
                                 <div className="widget-header-text">
                                     <div className="widget-header-title">{activeTab === 'home' ? config.name : 'Live Support'}</div>
                                     <div className="widget-header-status">
-                                        <span className="status-dot-small"></span>
+                                        <span className="status-dot-small" style={{ backgroundColor: '#10b981' }}></span>
                                         Online
                                     </div>
                                 </div>
                             </div>
                             <button onClick={() => setIsOpen(false)} className="widget-close-btn">
-                                <X size={20} color="white" />
+                                <X size={20} />
                             </button>
                         </div>
 
@@ -309,10 +331,10 @@ const ChatWidget = ({ chatbotId }) => {
                             {activeTab === 'home' && (
                                 <motion.div
                                     key="home-tab"
-                                    initial={{ opacity: 0, x: -10 }}
+                                    initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.25 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.2 }}
                                     style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
                                 >
                                     <div className="widget-messages">
@@ -320,7 +342,7 @@ const ChatWidget = ({ chatbotId }) => {
                                             <div key={msg.id} className={`widget-message ${msg.role}`}>
                                                 {msg.role === 'assistant' && (
                                                     <div className="widget-message-avatar" style={{ backgroundColor: primaryColor }}>
-                                                        <MessageCircle size={16} color="white" />
+                                                        <MessageCircle size={15} color="white" />
                                                     </div>
                                                 )}
                                                 <div className="widget-message-content">
@@ -350,7 +372,7 @@ const ChatWidget = ({ chatbotId }) => {
                                         {isAiTyping && (
                                             <div className="widget-message assistant">
                                                 <div className="widget-message-avatar" style={{ backgroundColor: primaryColor }}>
-                                                    <MessageCircle size={16} color="white" />
+                                                    <MessageCircle size={15} color="white" />
                                                 </div>
                                                 <div className="widget-typing">
                                                     <span></span><span></span><span></span>
@@ -365,7 +387,7 @@ const ChatWidget = ({ chatbotId }) => {
                                         {activeSection && (
                                             <div className="widget-input-section-badge">
                                                 <span>Topic: {activeSection.name}</span>
-                                                <button onClick={() => setActiveSection(null)}><X size={10} /></button>
+                                                <button onClick={() => setActiveSection(null)}><X size={12} /></button>
                                             </div>
                                         )}
                                         <div className="widget-input-wrapper">
@@ -381,9 +403,8 @@ const ChatWidget = ({ chatbotId }) => {
                                                 onClick={handleAiSend}
                                                 disabled={!aiInput.trim() || isAiTyping}
                                                 className="widget-send-btn"
-                                                style={{ color: primaryColor }}
                                             >
-                                                <Send size={18} />
+                                                <Send size={18} color={aiInput.trim() ? "white" : "rgba(255,255,255,0.4)"} />
                                             </button>
                                         </div>
                                     </div>
@@ -394,10 +415,10 @@ const ChatWidget = ({ chatbotId }) => {
                             {activeTab === 'chat' && (
                                 <motion.div
                                     key="live-tab"
-                                    initial={{ opacity: 0, x: 10 }}
+                                    initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.25 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ duration: 0.2 }}
                                     style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
                                 >
                                     <div className="widget-messages">
@@ -405,7 +426,7 @@ const ChatWidget = ({ chatbotId }) => {
                                             <div key={msg.id} className={`widget-message ${msg.role}`}>
                                                 {msg.role === 'assistant' && (
                                                     <div className="widget-message-avatar" style={{ backgroundColor: '#10b981' }}> {/* Green for live agent */}
-                                                        <Headset size={16} color="white" />
+                                                        <Headset size={15} color="white" />
                                                     </div>
                                                 )}
                                                 <div className="widget-message-content">
@@ -419,7 +440,7 @@ const ChatWidget = ({ chatbotId }) => {
                                         {isLiveTyping && (
                                             <div className="widget-message assistant">
                                                 <div className="widget-message-avatar" style={{ backgroundColor: '#10b981' }}>
-                                                    <Headset size={16} color="white" />
+                                                    <Headset size={15} color="white" />
                                                 </div>
                                                 <div className="widget-typing">
                                                     <span></span><span></span><span></span>
@@ -444,9 +465,8 @@ const ChatWidget = ({ chatbotId }) => {
                                                 onClick={handleLiveSend}
                                                 disabled={!liveInput.trim() || isLiveTyping}
                                                 className="widget-send-btn"
-                                                style={{ color: primaryColor }}
                                             >
-                                                <Send size={18} />
+                                                <Send size={18} color={liveInput.trim() ? "white" : "rgba(255,255,255,0.4)"} />
                                             </button>
                                         </div>
                                     </div>

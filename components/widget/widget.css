@@ -1,10 +1,11 @@
-/* Chat Widget Styles */
+/* Chat Widget Styles - Premium & Modern */
 :root {
     --w-shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --w-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --w-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --w-radius: 16px;
-    --w-radius-sm: 12px;
+    --w-shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --w-radius: 20px;
+    --w-radius-sm: 14px;
     --w-anim: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -13,48 +14,49 @@
     bottom: 24px;
     right: 24px;
     z-index: 2147483647;
-    /* Max z-index */
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
     pointer-events: none;
-    /* Allow clicks through container area */
 }
 
-/* Enable pointer events on actual interactive elements */
 .widget-button,
 .widget-chat-window {
     pointer-events: auto;
 }
 
+/* --- Floating Action Button --- */
 .widget-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    /* Slightly larger touch target */
-    height: 64px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    box-shadow: var(--w-shadow-lg);
-    transition: transform var(--w-anim), box-shadow var(--w-anim);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    /* Deep shadow */
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
     position: relative;
     overflow: hidden;
+    padding: 0;
+    margin: 0;
 }
 
-.widget-button::after {
+.widget-button:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.widget-button:active {
+    transform: scale(0.95);
+}
+
+.widget-button::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.1);
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.widget-button:active::after {
-    opacity: 1;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+    border-radius: 50%;
 }
 
 .widget-button-content {
@@ -68,8 +70,8 @@
 
 .widget-notification-dot {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 14px;
+    right: 14px;
     width: 12px;
     height: 12px;
     background-color: #ef4444;
@@ -82,27 +84,28 @@
 .widget-chat-window {
     width: 380px;
     height: 650px;
-    max-height: calc(100vh - 100px);
+    max-height: calc(100vh - 120px);
     background: var(--w-bg);
     border-radius: var(--w-radius);
-    box-shadow: var(--w-shadow-lg);
+    box-shadow: var(--w-shadow-xl);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     border: 1px solid var(--w-border);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     transform-origin: bottom right;
 }
 
 /* --- Header --- */
 .widget-header {
-    padding: 16px 20px;
+    padding: 18px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
 }
 
 .widget-header-content {
@@ -112,13 +115,14 @@
 }
 
 .widget-avatar-small {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(4px);
 }
 
@@ -131,41 +135,45 @@
 .widget-header-title {
     color: white;
     font-weight: 600;
-    font-size: 15px;
-    letter-spacing: -0.01em;
+    font-size: 16px;
+    letter-spacing: -0.02em;
 }
 
 .widget-header-status {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
 .status-dot-small {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background-color: #10b981;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .widget-close-btn {
     background: rgba(255, 255, 255, 0.1);
     border: none;
     cursor: pointer;
-    padding: 8px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    color: white;
+    color: rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 }
 
 .widget-close-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+    color: white;
+    transform: rotate(90deg);
 }
 
 /* --- Content --- */
@@ -183,15 +191,15 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 20px;
+    padding: 24px 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     scroll-behavior: smooth;
 }
 
 .widget-messages::-webkit-scrollbar {
-    width: 5px;
+    width: 4px;
 }
 
 .widget-messages::-webkit-scrollbar-track {
@@ -208,13 +216,13 @@
     gap: 12px;
     align-items: flex-end;
     max-width: 85%;
-    animation: slideIn 0.3s ease-out forwards;
+    animation: slideUpFade 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
 }
 
-@keyframes slideIn {
+@keyframes slideUpFade {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(12px);
     }
 
     to {
@@ -236,7 +244,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .widget-message-content {
@@ -246,12 +255,12 @@
 }
 
 .widget-message-bubble {
-    padding: 12px 16px;
-    border-radius: 18px;
+    padding: 12px 18px;
+    border-radius: 20px;
     font-size: 14px;
     line-height: 1.5;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    word-wrap: break-word;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+    position: relative;
 }
 
 .widget-message-bubble.assistant {
@@ -261,12 +270,12 @@
 }
 
 .widget-message-bubble.user {
-    /* Background color set inline via react */
     color: white;
     border-bottom-right-radius: 4px;
+    /* box-shadow: 0 4px 12px rgba(PRIMARY_COLOR, 0.3);  <-- dynamic shadow ideal but hard in css */
 }
 
-/* --- Sections --- */
+/* --- Sections (Chips) --- */
 .widget-sections {
     display: flex;
     flex-wrap: wrap;
@@ -275,43 +284,45 @@
 }
 
 .widget-section-chip {
-    padding: 8px 14px;
-    border-radius: 20px;
+    padding: 8px 16px;
+    border-radius: 24px;
     background: var(--w-input-bg);
     color: var(--w-text);
     border: 1px solid var(--w-border);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 .widget-section-chip:hover {
     background: var(--w-hover);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .widget-section-chip.active {
     color: white;
     border-color: transparent;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* --- Typing Indicator --- */
 .widget-typing {
     display: flex;
     gap: 5px;
-    padding: 14px 18px;
+    padding: 16px 20px;
     background: var(--w-msg-ast-bg);
-    border-radius: 18px;
+    border-radius: 20px;
     border-bottom-left-radius: 4px;
     align-self: flex-start;
     width: fit-content;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 .widget-typing span {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: #9ca3af;
     animation: bounce 1.4s infinite ease-in-out both;
@@ -340,12 +351,12 @@
 
 /* --- Input Area --- */
 .widget-input-container {
-    padding: 16px 20px;
+    padding: 16px 20px 20px 20px;
     background: var(--w-bg-sec);
     border-top: 1px solid var(--w-border);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .widget-input-section-badge {
@@ -353,11 +364,12 @@
     align-items: center;
     justify-content: space-between;
     background: var(--w-input-bg);
-    padding: 6px 10px;
-    border-radius: 8px;
+    padding: 6px 12px;
+    border-radius: 10px;
     font-size: 11px;
     color: var(--w-text-sec);
     border: 1px solid var(--w-border);
+    width: fit-content;
 }
 
 .widget-input-section-badge button {
@@ -369,6 +381,7 @@
     align-items: center;
     opacity: 0.7;
     transition: opacity 0.2s;
+    margin-left: 8px;
 }
 
 .widget-input-section-badge button:hover {
@@ -377,18 +390,20 @@
 
 .widget-input-wrapper {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
     background: var(--w-input-bg);
     border: 1px solid var(--w-border);
-    border-radius: 24px;
-    /* Rounded pill shape */
-    padding: 6px 8px 6px 16px;
-    transition: border-color 0.2s;
+    border-radius: 28px;
+    padding: 6px 6px 6px 18px;
+    transition: all 0.2s;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .widget-input-wrapper:focus-within {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .widget-input {
@@ -397,7 +412,7 @@
     border: none;
     padding: 8px 0;
     color: var(--w-text);
-    font-size: 14px;
+    font-size: 15px;
     outline: none;
     min-height: 24px;
 }
@@ -407,28 +422,28 @@
 }
 
 .widget-send-btn {
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
     background: rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
 
 .widget-send-btn:hover:not(:disabled) {
-    transform: scale(1.05);
-    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .widget-send-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.3;
     cursor: not-allowed;
-    background: transparent;
+    transform: none;
 }
 
 /* --- Tab Bar --- */
@@ -436,6 +451,7 @@
     display: flex;
     border-top: 1px solid var(--w-border);
     background: var(--w-bg);
+    padding: 4px;
 }
 
 .widget-tab-btn {
@@ -444,13 +460,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 12px;
+    gap: 4px;
+    padding: 10px;
     background: none;
     border: none;
     color: var(--w-text-sec);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
+    border-radius: 12px;
     transition: all 0.2s;
 }
 
@@ -461,17 +478,17 @@
 
 .widget-tab-btn.active {
     font-weight: 600;
-    background: var(--w-hover);
+    background: var(--w-input-bg);
 }
 
 /* --- Footer --- */
 .widget-footer {
-    padding: 8px;
+    padding: 10px;
     text-align: center;
     font-size: 10px;
     color: var(--w-text-sec);
     background: var(--w-bg-sec);
-    opacity: 0.7;
+    opacity: 0.6;
 }
 
 /* --- Responsive Media Queries --- */
@@ -479,50 +496,64 @@
 /* Mobile Devices (phones, less than 768px) */
 @media (max-width: 768px) {
     .widget-container {
-        bottom: 20px;
-        right: 20px;
-    }
-
-    .widget-chat-window {
-        position: fixed;
         bottom: 0;
         right: 0;
-        width: 100vw;
-        height: 100dvh;
-        /* Dynamic viewport height */
-        max-height: 100dvh;
-        border-radius: 0;
+        left: 0;
+        width: 100%;
+        height: 0;
+        /* Container itself collapses, we only show button/window */
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+        pointer-events: none;
+    }
+
+    .widget-button {
+        pointer-events: auto;
+        width: 56px;
+        height: 56px;
+        margin-right: 20px;
+        margin-bottom: 20px;
+    }
+
+    /* Bottom Sheet Style */
+    .widget-chat-window {
+        position: fixed;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        width: 100vw !important;
+        height: 85dvh !important;
+        max-height: 85dvh !important;
+
+        border-radius: 24px 24px 0 0 !important;
         border: none;
-        box-shadow: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+
+        transform-origin: bottom center;
+    }
+
+    /* Add a "handle" for the bottom sheet look */
+    .widget-header::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
     }
 
     .widget-header {
-        padding: 16px;
-        padding-top: max(16px, env(safe-area-inset-top));
-        /* Safe area for notches */
+        padding: 20px 16px 12px 16px;
+        /* More top padding for handle */
     }
 
     .widget-input-container {
-        padding-bottom: max(16px, env(safe-area-inset-bottom));
-        /* Safe area for home bar */
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
     }
-
-    /* Close button usually needed more prominent on mobile */
-    .widget-close-btn {
-        width: 36px;
-        height: 36px;
-    }
-}
-
-/* Tablets (iPad, 768px - 1024px) */
-@media (min-width: 768px) and (max-width: 1024px) {
-    .widget-chat-window {
-        width: 420px;
-        height: 700px;
-    }
-}
-
-/* Large Screens */
-@media (min-width: 1025px) {
-    /* Default styles apply */
 }
