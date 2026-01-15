@@ -4,19 +4,28 @@ import { Plus, MessageSquare, MoreVertical, Loader2, ArrowRight } from 'lucide-r
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CreateChatbotModal from './CreateChatbotModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ChatbotList() {
+    const { user, loading: authLoading } = useAuth();
     const [chatbots, setChatbots] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
-        fetchChatbots();
-    }, []);
+        if (!authLoading && user) {
+            fetchChatbots();
+        }
+    }, [user, authLoading]);
 
     const fetchChatbots = async () => {
         try {
-            const res = await fetch('/api/chatbots');
+            const token = await user.getIdToken();
+            const res = await fetch('/api/chatbots', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await res.json();
             if (data.success) {
                 setChatbots(data.data);
