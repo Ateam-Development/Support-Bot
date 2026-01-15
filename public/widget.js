@@ -1,7 +1,13 @@
 (function () {
     // Get the script tag that loaded this file
-    var scripts = document.getElementsByTagName('script');
-    var currentScript = scripts[scripts.length - 1];
+    // Get the script tag that loaded this file
+    var currentScript = document.currentScript;
+
+    // Fallback for older browsers or async processing
+    if (!currentScript) {
+        var scripts = document.getElementsByTagName('script');
+        currentScript = scripts[scripts.length - 1];
+    }
     var chatbotId = currentScript.getAttribute('data-id');
 
     if (!chatbotId) {
