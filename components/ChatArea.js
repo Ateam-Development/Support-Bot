@@ -137,7 +137,7 @@ const ChatArea = ({ primaryColor = 'blue', welcomeMessage, chatbotId, user, them
                 const errorMsg = {
                     id: Date.now() + 1,
                     role: 'assistant',
-                    content: 'Sorry, I encountered an error processing your message.',
+                    content: data.message || data.error || 'Sorry, I encountered an error processing your message.',
                     isError: true
                 };
                 setMessages(prev => [...prev, errorMsg]);
@@ -147,7 +147,7 @@ const ChatArea = ({ primaryColor = 'blue', welcomeMessage, chatbotId, user, them
             const errorMsg = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                content: 'Sorry, I encountered an error processing your message.',
+                content: `Error: ${error.message || 'Sorry, I encountered an error processing your message.'}`,
                 isError: true
             };
             setMessages(prev => [...prev, errorMsg]);
