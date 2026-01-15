@@ -47,7 +47,8 @@ export async function PUT(request, { params }) {
 
         const { user } = authResult;
         const { id } = await params;
-        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, systemMessage, config } = await request.json();
+        const body = await request.json();
+        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, systemMessage, config, allowedOrigins } = body;
 
         // Verify ownership
         const ownershipResult = await verifyChatbotOwnership(id, user.uid);
@@ -66,13 +67,9 @@ export async function PUT(request, { params }) {
         if (openaiApiKey !== undefined) updates.openaiApiKey = openaiApiKey;
         if (geminiApiKey !== undefined) updates.geminiApiKey = geminiApiKey;
         if (systemMessage !== undefined) updates.systemMessage = systemMessage;
-        if (openaiApiKey !== undefined) updates.openaiApiKey = openaiApiKey;
-        if (geminiApiKey !== undefined) updates.geminiApiKey = geminiApiKey;
-        if (systemMessage !== undefined) updates.systemMessage = systemMessage;
         if (config) updates.config = { ...chatbot.config, ...config };
 
         // Allowed Origins for CORS/Security
-        const { allowedOrigins } = await request.json();
         if (allowedOrigins && Array.isArray(allowedOrigins)) {
             // Validate structure (optional but good practice)
             // Accepts strings (old) or objects {name, url} (new)
