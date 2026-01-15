@@ -24,15 +24,46 @@
     // Create iframe container
     var container = document.createElement('div');
     container.id = 'oneminute-widget-container';
-    container.style.cssText = 'position: fixed; bottom: 0; right: 0; z-index: 999999; pointer-events: none;';
+    container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 999999; width: 80px; height: 80px;';
 
     // Create iframe
     var iframe = document.createElement('iframe');
     iframe.src = baseUrl + '/widget/' + chatbotId;
-    iframe.style.cssText = 'border: none; width: 100vw; height: 100vh; pointer-events: auto;';
+    iframe.style.cssText = 'border: none; width: 100%; height: 100%; pointer-events: auto; border-radius: 16px;';
     iframe.setAttribute('allow', 'clipboard-write');
 
     container.appendChild(iframe);
+
+    // Handle Resize Messages
+    window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'oneminute-widget-resize') {
+            if (event.data.isOpen) {
+                // Open State
+                if (window.innerWidth < 480) {
+                    // Mobile: Full screen
+                    container.style.width = '100vw';
+                    container.style.height = '100vh';
+                    container.style.bottom = '0';
+                    container.style.right = '0';
+                    iframe.style.borderRadius = '0';
+                } else {
+                    // Desktop: Widget size + padding
+                    container.style.width = '400px';
+                    container.style.height = '640px'; // 600px widget + margins
+                    container.style.bottom = '20px';
+                    container.style.right = '20px';
+                    iframe.style.borderRadius = '16px';
+                }
+            } else {
+                // Closed State (Button only)
+                container.style.width = '80px';
+                container.style.height = '80px';
+                container.style.bottom = '20px';
+                container.style.right = '20px';
+                iframe.style.borderRadius = '50%'; // Rounded for button area
+            }
+        }
+    });
 
     // Inject into page when DOM is ready
     if (document.readyState === 'loading') {

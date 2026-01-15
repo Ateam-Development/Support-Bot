@@ -131,6 +131,16 @@ const ChatWidget = ({ chatbotId }) => {
         scrollToBottom();
     }, [aiMessages, liveMessages, isAiTyping, isLiveTyping, activeTab]);
 
+    // Notify parent window about resize needs
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.parent.postMessage({
+                type: 'oneminute-widget-resize',
+                isOpen: isOpen
+            }, '*');
+        }
+    }, [isOpen]);
+
     const fetchConfig = async () => {
         try {
             const res = await fetch(`/api/widget/${chatbotId}`);
