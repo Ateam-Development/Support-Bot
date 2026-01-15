@@ -84,7 +84,16 @@ const ChatWidget = ({ chatbotId }) => {
         const unsubscribe = subscribeToMessages(liveConversationId, (messages) => {
             // Filter to show only live chat messages
             const liveOnly = messages.filter(msg => msg.type === 'live');
-            setLiveMessages(liveOnly);
+
+            // Always prepend welcome message
+            const welcomeMsg = {
+                id: 'live-welcome',
+                role: 'assistant',
+                content: "Hello! A support agent will be with you shortly. How can we help you?",
+                type: 'live'
+            };
+
+            setLiveMessages([welcomeMsg, ...liveOnly]);
         });
 
         return () => unsubscribe();
