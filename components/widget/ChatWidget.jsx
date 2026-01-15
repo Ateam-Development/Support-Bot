@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, X, MessageCircle, Home, MessageSquare, Headset } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToMessages } from '@/lib/firebase-realtime';
+import './widget.css';
 
 const ChatWidget = ({ chatbotId }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +45,8 @@ const ChatWidget = ({ chatbotId }) => {
             '--w-msg-ast-bg': '#ffffff',
             '--w-msg-ast-txt': '#1a1a1a',
             '--w-hover': 'rgba(255,255,255,0.1)',
-            '--w-scroll': 'rgba(255,255,255,0.2)'
+            '--w-scroll': 'rgba(255,255,255,0.2)',
+            '--w-shadow': '0 8px 32px rgba(0,0,0,0.3)'
         },
         white: {
             '--w-bg': '#ffffff',
@@ -56,7 +58,8 @@ const ChatWidget = ({ chatbotId }) => {
             '--w-msg-ast-bg': '#f4f4f5',
             '--w-msg-ast-txt': '#18181b',
             '--w-hover': 'rgba(0,0,0,0.05)',
-            '--w-scroll': 'rgba(0,0,0,0.2)'
+            '--w-scroll': 'rgba(0,0,0,0.2)',
+            '--w-shadow': '0 8px 32px rgba(0,0,0,0.1)'
         }
     };
 
@@ -90,7 +93,6 @@ const ChatWidget = ({ chatbotId }) => {
         }
     }, [config]);
 
-    // Initialize Live Chat Welcome Message (only if no real-time messages)
     // Initialize Live Chat Welcome Message
     useEffect(() => {
         if (config && liveMessages.length === 0 && !liveConversationId) {
@@ -108,22 +110,16 @@ const ChatWidget = ({ chatbotId }) => {
     // Real-time listener for live chat messages
     useEffect(() => {
         if (!liveConversationId) return;
-
         const unsubscribe = subscribeToMessages(liveConversationId, (messages) => {
-            // Filter to show only live chat messages
             const liveOnly = messages.filter(msg => msg.type === 'live');
-
-            // Always prepend welcome message
             const welcomeMsg = {
                 id: 'live-welcome',
                 role: 'assistant',
                 content: "Hello! A support agent will be with you shortly. How can we help you?",
                 type: 'live'
             };
-
             setLiveMessages([welcomeMsg, ...liveOnly]);
         });
-
         return () => unsubscribe();
     }, [liveConversationId]);
 
@@ -232,11 +228,9 @@ const ChatWidget = ({ chatbotId }) => {
             const data = await res.json();
 
             if (data.success) {
-                // Set conversation ID for real-time subscription
                 if (!liveConversationId) {
                     setLiveConversationId(data.data.conversationId);
                 }
-                // Real-time listener will update messages automatically
             }
         } catch (error) {
             console.error('Live chat error:', error);
@@ -265,14 +259,14 @@ const ChatWidget = ({ chatbotId }) => {
                         initial={{ scale: 0, rotate: -90 }}
                         animate={{ scale: 1, rotate: 0 }}
                         exit={{ scale: 0, rotate: 90 }}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setIsOpen(true)}
                         className="widget-button"
                         style={{ backgroundColor: primaryColor }}
                     >
                         <div className="widget-button-content">
-                            <MessageCircle size={28} color="white" strokeWidth={2.5} />
+                            <MessageCircle size={32} color="white" strokeWidth={2.5} />
                             {/* Notification Dot */}
                             <span className="widget-notification-dot"></span>
                         </div>
@@ -282,16 +276,17 @@ const ChatWidget = ({ chatbotId }) => {
                 {isOpen && (
                     <motion.div
                         key="chat-window"
-                        initial={{ opacity: 0, scale: 0.8, y: 20, originX: 1, originY: 1 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20, transition: { duration: 0.2 } }}
-                        transition={{ type: "spring", damping: 25, stiffness: 300, duration: 0.3 }}
+                        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 40, scale: 0.95, transition: { duration: 0.2 } }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                         className="widget-chat-window"
+                        style={{ boxShadow: currentTheme['--w-shadow'] }} // Apply theme shadow
                     >
                         {/* Header */}
                         <div className="widget-header" style={{ backgroundColor: primaryColor }}>
                             <div className="widget-header-content">
-                                <div className="widget-avatar-small" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                                <div className="widget-avatar-small">
                                     {activeTab === 'home' ? <MessageCircle size={20} color="white" /> : <Headset size={20} color="white" />}
                                 </div>
                                 <div className="widget-header-text">
@@ -314,10 +309,11 @@ const ChatWidget = ({ chatbotId }) => {
                             {activeTab === 'home' && (
                                 <motion.div
                                     key="home-tab"
-                                    initial={{ opacity: 0, x: -20 }}
+                                    initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
                                 >
                                     <div className="widget-messages">
                                         {aiMessages.map((msg) => (
@@ -398,10 +394,11 @@ const ChatWidget = ({ chatbotId }) => {
                             {activeTab === 'chat' && (
                                 <motion.div
                                     key="live-tab"
-                                    initial={{ opacity: 0, x: 20 }}
+                                    initial={{ opacity: 0, x: 10 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
                                 >
                                     <div className="widget-messages">
                                         {liveMessages.map((msg) => (
@@ -484,372 +481,6 @@ const ChatWidget = ({ chatbotId }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            <style jsx>{`
-                .widget-container {
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    z-index: 999999;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                }
-
-                .widget-button {
-                    width: 60px;
-                    height: 60px;
-                    border-radius: 50%;
-                    border: none;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    position: relative;
-                }
-
-                .widget-notification-dot {
-                    position: absolute;
-                    top: 14px;
-                    right: 14px;
-                    width: 10px;
-                    height: 10px;
-                    background-color: #ef4444; /* Red */
-                    border: 2px solid white; 
-                    border-radius: 50%;
-                }
-
-                .widget-button-content {
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                .widget-chat-window {
-                    width: 380px;
-                    height: 600px;
-                    max-height: 80vh;
-                    background: var(--w-bg);
-                    border-radius: 16px;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                    border: 1px solid var(--w-border);
-                }
-
-                .widget-header {
-                    padding: 16px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                }
-
-                .widget-header-content {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                }
-
-                .widget-avatar-small {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                .widget-header-text {
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .widget-header-title {
-                    color: white;
-                    font-weight: 600;
-                    font-size: 14px;
-                }
-
-                .widget-header-status {
-                    color: rgba(255,255,255,0.9);
-                    font-size: 11px;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-
-                .status-dot-small {
-                    width: 5px;
-                    height: 5px;
-                    border-radius: 50%;
-                    background-color: #10b981;
-                }
-
-                .widget-close-btn {
-                    background: none;
-                    border: none;
-                    cursor: pointer;
-                    padding: 4px;
-                    opacity: 0.8;
-                    transition: opacity 0.2s;
-                }
-
-                .widget-close-btn:hover {
-                    opacity: 1;
-                }
-
-                .widget-content {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                    background: var(--w-bg);
-                    position: relative;
-                }
-
-                .widget-messages {
-                    flex: 1;
-                    overflow-y: auto;
-                    padding: 20px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                }
-
-                .widget-messages::-webkit-scrollbar {
-                    width: 6px;
-                }
-
-                .widget-messages::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-
-                .widget-messages::-webkit-scrollbar-thumb {
-                    background: var(--w-scroll);
-                    border-radius: 3px;
-                }
-
-                .widget-message {
-                    display: flex;
-                    gap: 8px;
-                    align-items: flex-start;
-                }
-
-                .widget-message.user {
-                    flex-direction: row-reverse;
-                }
-
-                .widget-message-avatar {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                }
-
-                .widget-message-content {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    max-width: 75%;
-                }
-
-                .widget-message-bubble {
-                    padding: 12px 16px;
-                    border-radius: 12px;
-                    font-size: 14px;
-                    line-height: 1.5;
-                }
-
-                .widget-message-bubble.assistant {
-                    background: var(--w-msg-ast-bg);
-                    color: var(--w-msg-ast-txt);
-                    border-radius: 12px 12px 12px 4px;
-                }
-
-                .widget-message-bubble.user {
-                    color: white;
-                    border-radius: 12px 12px 4px 12px;
-                }
-
-                .widget-sections {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 6px;
-                    margin-top: 4px;
-                }
-
-                .widget-section-chip {
-                    padding: 6px 12px;
-                    border-radius: 16px;
-                    background: var(--w-input-bg);
-                    color: var(--w-text);
-                    border: 1px solid var(--w-border);
-                    font-size: 12px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .widget-section-chip:hover {
-                    background: var(--w-hover);
-                }
-
-                .widget-section-chip.active {
-                    color: white;
-                }
-
-                .widget-typing {
-                    display: flex;
-                    gap: 4px;
-                    padding: 12px 16px;
-                    background: var(--w-msg-ast-bg);
-                    border-radius: 12px 12px 12px 4px;
-                }
-
-                .widget-typing span {
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 50%;
-                    background: #999;
-                    animation: typing 1.4s infinite;
-                }
-
-                .widget-typing span:nth-child(2) {
-                    animation-delay: 0.2s;
-                }
-
-                .widget-typing span:nth-child(3) {
-                    animation-delay: 0.4s;
-                }
-
-                .widget-input-container {
-                    padding: 16px;
-                    background: var(--w-bg-sec);
-                    border-top: 1px solid var(--w-border);
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                }
-
-                .widget-input-section-badge {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    background: var(--w-input-bg);
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    color: var(--w-text-sec);
-                }
-                
-                .widget-input-section-badge button {
-                    background: none;
-                    border: none;
-                    color: inherit;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                }
-                
-                .widget-input-section-badge button:hover {
-                    color: white;
-                }
-
-                .widget-input-wrapper {
-                     display: flex;
-                     gap: 8px;
-                }
-
-                .widget-input {
-                    flex: 1;
-                    background: var(--w-input-bg);
-                    border: 1px solid var(--w-border);
-                    border-radius: 8px;
-                    padding: 10px 12px;
-                    color: var(--w-text);
-                    font-size: 14px;
-                    outline: none;
-                }
-
-                .widget-input::placeholder {
-                    color: var(--w-text-sec);
-                }
-
-                .widget-send-btn {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 8px;
-                    border: none;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: opacity 0.2s;
-                    background: transparent;
-                }
-
-                .widget-send-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                
-                .widget-send-btn:hover {
-                    background: var(--w-hover);
-                }
-
-                /* Tab Bar */
-                .widget-tab-bar {
-                    display: flex;
-                    justify-content: space-around;
-                    padding: 12px;
-                    background: var(--w-bg-sec);
-                    border-top: 1px solid var(--w-border);
-                }
-
-                .widget-tab-btn {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 4px;
-                    background: none;
-                    border: none;
-                    color: var(--w-text-sec);
-                    cursor: pointer;
-                    transition: color 0.2s;
-                }
-
-                .widget-tab-btn:hover {
-                    color: var(--w-text);
-                }
-
-                .widget-tab-btn.active {
-                    color: white;
-                }
-                
-                .widget-tab-btn span {
-                    font-size: 10px;
-                    font-weight: 500;
-                }
-
-                .widget-footer {
-                    padding: 8px 10px 12px;
-                    text-align: center;
-                    font-size: 10px;
-                    color: var(--w-text-sec);
-                    background: var(--w-bg-sec);
-                }
-
-                @media (max-width: 480px) {
-                    .widget-chat-window {
-                        width: calc(100vw - 40px);
-                        height: calc(100vh - 40px);
-                    }
-                }
-            `}</style>
         </div>
     );
 };
