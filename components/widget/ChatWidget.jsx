@@ -257,6 +257,7 @@ const ChatWidget = ({ chatbotId }) => {
 
     const primaryColor = config ? colorMap[config.primaryColor] || colorMap.blue : colorMap.blue;
     const currentTheme = config ? themeColors[(config.theme || 'black').toLowerCase()] || themeColors.black : themeColors.black;
+    const isWhiteTheme = (config?.theme || 'black').toLowerCase() === 'white';
 
     // Animation Variants
     const desktopVariants = {
@@ -310,7 +311,10 @@ const ChatWidget = ({ chatbotId }) => {
                         <div className="widget-header">
                             <div className="widget-header-content">
                                 <div className="widget-avatar-small">
-                                    {activeTab === 'home' ? <MessageCircle size={22} color="white" strokeWidth={2} /> : <Headset size={22} color="white" strokeWidth={2} />}
+                                    {activeTab === 'home' ?
+                                        <MessageCircle size={22} color={isWhiteTheme ? primaryColor : "white"} strokeWidth={2} /> :
+                                        <Headset size={22} color={isWhiteTheme ? primaryColor : "white"} strokeWidth={2} />
+                                    }
                                 </div>
                                 <div className="widget-header-text">
                                     <div className="widget-header-title">{activeTab === 'home' ? config.name : 'Live Support'}</div>
@@ -405,7 +409,7 @@ const ChatWidget = ({ chatbotId }) => {
                                                 disabled={!aiInput.trim() || isAiTyping}
                                                 className="widget-send-btn"
                                             >
-                                                <Send size={18} color={aiInput.trim() ? "white" : "rgba(255,255,255,0.4)"} />
+                                                <Send size={18} color={aiInput.trim() ? (isWhiteTheme ? primaryColor : "white") : (isWhiteTheme ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.4)")} />
                                             </button>
                                         </div>
                                     </div>
@@ -467,7 +471,7 @@ const ChatWidget = ({ chatbotId }) => {
                                                 disabled={!liveInput.trim() || isLiveTyping}
                                                 className="widget-send-btn"
                                             >
-                                                <Send size={18} color={liveInput.trim() ? "white" : "rgba(255,255,255,0.4)"} />
+                                                <Send size={18} color={liveInput.trim() ? (isWhiteTheme ? primaryColor : "white") : (isWhiteTheme ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.4)")} />
                                             </button>
                                         </div>
                                     </div>
