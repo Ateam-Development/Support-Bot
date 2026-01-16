@@ -109,7 +109,7 @@
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--w-border);
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
 }
 
@@ -138,14 +138,14 @@
 }
 
 .widget-header-title {
-    color: white;
+    color: var(--w-text);
     font-weight: 600;
     font-size: 16px;
     letter-spacing: -0.02em;
 }
 
 .widget-header-status {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--w-text-sec);
     font-size: 13px;
     display: flex;
     align-items: center;
@@ -168,7 +168,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--w-text-sec);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -177,7 +177,7 @@
 
 .widget-close-btn:hover {
     background: rgba(255, 255, 255, 0.2);
-    color: white;
+    color: var(--w-text);
     transform: rotate(90deg);
 }
 
