@@ -21,7 +21,8 @@
     // Create iframe container - minimal styling, no background
     var container = document.createElement('div');
     container.id = 'oneminute-widget-container';
-    container.style.cssText = 'position: fixed; bottom: 0; right: 0; z-index: 2147483647; width: 0; height: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; overflow: visible;';
+    // Removed transition to fix flickering issue
+    container.style.cssText = 'position: fixed; bottom: 0; right: 0; z-index: 2147483647; width: 0; height: 0; pointer-events: none; overflow: visible;';
 
     // Create iframe
     var iframe = document.createElement('iframe');
@@ -46,17 +47,18 @@
                 } else {
                     // Desktop: Widget size
                     container.style.width = '400px';
-                    container.style.height = '680px';
-                    container.style.bottom = '24px';
-                    container.style.right = '24px';
+                    container.style.height = '700px';
+                    container.style.bottom = '20px';
+                    container.style.right = '20px';
                     container.style.left = 'auto';
                 }
             } else {
                 // Closed State (Button only)
-                container.style.width = '80px';
-                container.style.height = '80px';
-                container.style.bottom = '20px';
-                container.style.right = '20px';
+                // Increased size to prevent shadow clipping
+                container.style.width = '120px';
+                container.style.height = '120px';
+                container.style.bottom = '10px';
+                container.style.right = '10px';
                 container.style.left = 'auto';
             }
         }

@@ -10,17 +10,22 @@
 }
 
 .widget-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
+    position: absolute;
+    inset: 0;
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 10px;
 }
 
 .widget-button,
 .widget-chat-window {
     pointer-events: auto;
+    margin: 10px;
 }
 
 /* --- Floating Action Button --- */
@@ -500,8 +505,8 @@
         right: 0;
         left: 0;
         width: 100%;
-        height: 0;
-        /* Container itself collapses, we only show button/window */
+        height: 100%;
+        /* Container fills the iframe */
         display: flex;
         justify-content: flex-end;
         align-items: flex-end;
@@ -526,6 +531,8 @@
         width: 100vw !important;
         height: 85dvh !important;
         max-height: 85dvh !important;
+        margin: 0 !important;
+        /* Flush to bottom */
 
         border-radius: 24px 24px 0 0 !important;
         border: none;
