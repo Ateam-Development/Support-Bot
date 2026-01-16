@@ -501,7 +501,7 @@ const ChatWidget = ({ chatbotId }) => {
 
                         {/* Footer */}
                         <div className="widget-footer">
-                            Powered by OneMinute Support
+                            Powered by Adeptimize Solutions
                         </div>
                     </motion.div>
                 )}

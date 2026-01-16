@@ -10,7 +10,7 @@
     var chatbotId = currentScript.getAttribute('data-id');
 
     if (!chatbotId) {
-        console.error('OneMinute Support Widget: data-id attribute is required');
+        console.error('Adeptimize Solutions Widget: data-id attribute is required');
         return;
     }
 

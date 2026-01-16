@@ -81,7 +81,7 @@ const Sidebar = () => {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
                     <span className="text-white font-bold text-lg">A</span>
                 </div>
-                <span className="text-white font-bold tracking-wide">OneMinute Support</span>
+                <span className="text-white font-bold tracking-wide">Adeptimize Solutions</span>
             </div>
 
             {/* Chatbot Selector */}

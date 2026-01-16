@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "OneMinute Support - Chatbot Dashboard",
+  title: "Adeptimize Solutions - Chatbot Dashboard",
   description: "Manage your chatbots, knowledge base, and conversations",
 };
 
