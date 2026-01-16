@@ -56,7 +56,7 @@ const ChatWidget = ({ chatbotId }) => {
             '--w-bg-sec': '#fafafa', // Very light gray for sections/footer
             '--w-text': '#18181b',
             '--w-text-sec': '#71717a',
-            '--w-border': '#e4e4e7', // Cleaner border
+            '--w-border': '#cbd5e1', // Darker border for visibility
             '--w-input-bg': '#f4f4f5',
             '--w-msg-ast-bg': '#f4f4f5',
             '--w-msg-ast-txt': '#18181b',
