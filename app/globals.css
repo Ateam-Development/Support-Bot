@@ -39,3 +39,56 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* React Flow Controls Fix - Comprehensive */
+.react-flow__controls {
+  background-color: #1a1a1a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.react-flow__controls-button {
+  background-color: #1a1a1a !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #333 !important;
+}
+
+/* React Flow Controls Fix */
+.react-flow__controls-button {
+  background-color: #1a1a1a !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: white !important;
+  stroke: white !important;
+  /* Force color update */
+  color: white !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #333 !important;
+}

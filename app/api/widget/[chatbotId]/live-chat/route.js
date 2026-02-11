@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getChatbotById, createConversation, addMessageToConversation, getConversationById, getConversationByVisitorId } from '@/lib/db';
-import { addRealtimeMessage } from '@/lib/firebase-realtime';
+import { addRealtimeMessage, checkUserStatus } from '@/lib/firebase-realtime';
+import { sendEmail } from '@/lib/email';
 
 /**
  * POST /api/widget/:chatbotId/live-chat
@@ -70,6 +71,45 @@ export async function POST(request, { params }) {
             await addRealtimeMessage(conversation.id, userMessage);
         } catch (e) {
             console.error('Realtime DB sync failed:', e);
+        }
+
+        // Check for offline email notification
+        try {
+            const ownerStatus = await checkUserStatus(chatbot.userId);
+            const isOffline = !ownerStatus.online;
+            const lastSeenDiff = Date.now() - (ownerStatus.lastSeen || 0);
+            const isInactive = lastSeenDiff > 2 * 60 * 1000; // 2 minutes
+
+            if (isOffline || isInactive) {
+                // Fetch fresh chatbot data to get latest emails
+                // We already have 'chatbot' object but it might be stale if updated recently
+                // However, for performance we can use the one we fetched
+                const emails = chatbot.notificationEmails;
+
+                if (emails && emails.length > 0) {
+                    const subject = `New message from ${visitorId || 'Visitor'} - ${chatbot.name}`;
+                    const html = `
+                        <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                            <h2>New Message Received</h2>
+                            <p>You have a new message from <strong>${visitorId || 'Visitor'}</strong> on <strong>${chatbot.name}</strong>.</p>
+                            <blockquote style="background: #f5f5f5; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">
+                                ${message}
+                            </blockquote>
+                            <p style="color: #666; font-size: 14px;">
+                                You are receiving this because you are currently offline or inactive on the dashboard.
+                            </p>
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/conversations" style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                                View Conversation
+                            </a>
+                        </div>
+                    `;
+
+                    await sendEmail(emails, subject, html);
+                }
+            }
+        } catch (emailError) {
+            console.error('Failed to send notification email:', emailError);
+            // Don't fail the request
         }
 
         return NextResponse.json({

@@ -55,7 +55,7 @@ export default function ConversationDetail({ conversation, onSendMessage }) {
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a]">
             {/* Header */}
-            <div className="p-4 border-b border-white/10 bg-white/5">
+            <div className="flex justify-between items-center p-4 border-b border-white/10 bg-white/5">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                         <span className="text-white font-semibold text-sm">
@@ -137,6 +137,6 @@ export default function ConversationDetail({ conversation, onSendMessage }) {
                     Send live messages to respond to visitors
                 </p>
             </div>
-        </div>
+        </div >
     );
 }

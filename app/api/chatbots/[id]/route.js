@@ -48,7 +48,7 @@ export async function PUT(request, { params }) {
         const { user } = authResult;
         const { id } = await params;
         const body = await request.json();
-        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, systemMessage, config, allowedOrigins } = body;
+        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, mistralApiKey, systemMessage, config, allowedOrigins } = body;
 
         // Verify ownership
         const ownershipResult = await verifyChatbotOwnership(id, user.uid);
@@ -66,6 +66,7 @@ export async function PUT(request, { params }) {
         if (theme) updates.theme = theme;
         if (openaiApiKey !== undefined) updates.openaiApiKey = openaiApiKey;
         if (geminiApiKey !== undefined) updates.geminiApiKey = geminiApiKey;
+        if (mistralApiKey !== undefined) updates.mistralApiKey = mistralApiKey;
         if (systemMessage !== undefined) updates.systemMessage = systemMessage;
         if (config) updates.config = { ...chatbot.config, ...config };
 

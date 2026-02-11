@@ -24,6 +24,7 @@ export default function ChatbotPage() {
     const [theme, setTheme] = useState('black');
     const [openaiApiKey, setOpenaiApiKey] = useState('');
     const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [mistralApiKey, setMistralApiKey] = useState('');
     const [systemMessage, setSystemMessage] = useState('');
 
     const colors = [
@@ -59,6 +60,7 @@ export default function ChatbotPage() {
                 setTheme(bot.theme || 'black');
                 setOpenaiApiKey(bot.openaiApiKey || '');
                 setGeminiApiKey(bot.geminiApiKey || '');
+                setMistralApiKey(bot.mistralApiKey || '');
                 setSystemMessage(bot.systemMessage || 'You are a helpful assistant.');
             } else {
                 // If not found or error, redirect to home
@@ -138,6 +140,7 @@ export default function ChatbotPage() {
                     theme,
                     openaiApiKey,
                     geminiApiKey,
+                    mistralApiKey,
                     systemMessage
                 })
             });
@@ -298,6 +301,16 @@ export default function ChatbotPage() {
                                 placeholder="AIza..."
                             />
                         </div>
+                        <div className="mt-4">
+                            <label className="text-xs font-medium text-gray-400 block mb-2">Mistral API Key</label>
+                            <input
+                                type="password"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                value={mistralApiKey}
+                                onChange={(e) => setMistralApiKey(e.target.value)}
+                                placeholder="Key..."
+                            />
+                        </div>
                     </div>
 
                     {/* System Message */}
@@ -350,6 +363,6 @@ export default function ChatbotPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

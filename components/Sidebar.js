@@ -9,7 +9,8 @@ import {
     MessageSquare,
     History,
     Settings,
-    LogOut
+    LogOut,
+    GitBranch
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -60,6 +61,12 @@ const Sidebar = () => {
             name: 'Conversations',
             icon: History,
             path: selectedChatbot ? `/conversations/${selectedChatbot.id}` : '/conversations',
+            disabled: !selectedChatbot
+        },
+        {
+            name: 'Flow',
+            icon: GitBranch, // You'll need to import this
+            path: selectedChatbot ? `/flow/${selectedChatbot.id}` : '/flow',
             disabled: !selectedChatbot
         },
         {

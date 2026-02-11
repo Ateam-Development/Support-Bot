@@ -69,12 +69,21 @@ export async function POST(request) {
         // Determine which API to use
         const useOpenAI = chatbot.openaiApiKey && chatbot.openaiApiKey.trim() !== '';
         const useGemini = chatbot.geminiApiKey && chatbot.geminiApiKey.trim() !== '';
+        const useMistral = chatbot.mistralApiKey && chatbot.mistralApiKey.trim() !== '';
 
         let response;
 
         if (useOpenAI) {
             response = await callOpenAI(
                 chatbot.openaiApiKey,
+                chatbot.systemMessage || 'You are a helpful assistant.',
+                knowledgeContext,
+                contextMessage,
+                message
+            );
+        } else if (useMistral) {
+            response = await callMistral(
+                chatbot.mistralApiKey,
                 chatbot.systemMessage || 'You are a helpful assistant.',
                 knowledgeContext,
                 contextMessage,
@@ -93,7 +102,7 @@ export async function POST(request) {
             return NextResponse.json({
                 success: true,
                 data: {
-                    message: 'Please configure an API key (OpenAI or Gemini) in the settings to enable chat functionality.',
+                    message: 'Please configure an API key (OpenAI, Gemini, or Mistral) in the settings to enable chat functionality.',
                     isError: true
                 }
             });
@@ -211,3 +220,57 @@ async function callGemini(apiKey, systemMessage, knowledgeContext, contextMessag
     const data = await response.json();
     return data.candidates[0].content.parts[0].text;
 }
+
+/**
+ * Call Mistral API
+ */
+async function callMistral(apiKey, systemMessage, knowledgeContext, contextMessage, userMessage) {
+    const messages = [
+        {
+            role: 'system',
+            content: systemMessage
+        }
+    ];
+
+    if (knowledgeContext) {
+        messages.push({
+            role: 'system',
+            content: `Knowledge Base:\n${knowledgeContext}`
+        });
+    }
+
+    if (contextMessage) {
+        messages.push({
+            role: 'system',
+            content: contextMessage
+        });
+    }
+
+    messages.push({
+        role: 'user',
+        content: userMessage
+    });
+
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'mistral-large-latest',
+            messages: messages,
+            temperature: 0.7
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        const errorMessage = error.error?.message || error.message || JSON.stringify(error) || 'Unknown error';
+        throw new Error(`Mistral API error: ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+}
+

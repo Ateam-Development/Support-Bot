@@ -88,19 +88,95 @@ const ChatWidget = ({ chatbotId }) => {
         fetchConfig();
     }, [chatbotId]);
 
-    // Initialize AI Chat Welcome Message
+    // Initialize AI Chat Welcome Message OR Flow
     useEffect(() => {
-        if (config && aiMessages.length === 0) {
+        if (config) {
+            // Check if we should initialize flow
+            // Check if we should initialize flow
+            const isFlowCompleted = localStorage.getItem(`oneminute_flow_complete_${chatbotId}`);
+
+            if (config.hasFlow && !isFlowCompleted) {
+                // If we have no messages, OR if we only have the default welcome message (fallback)
+                // We should clear and Start Flow
+                const hasOnlyWelcome = aiMessages.length === 1 && aiMessages[0].isWelcome;
+
+                if (aiMessages.length === 0 || hasOnlyWelcome) {
+                    // Clear previous welcome if it exists to make room for Flow Start
+                    if (hasOnlyWelcome) setAiMessages([]);
+
+                    // Trigger Flow Initialization
+                    initFlow();
+                }
+            } else {
+                // No Flow OR Flow Completed? Show Welcome if empty
+                if (aiMessages.length === 0) {
+                    setAiMessages([
+                        {
+                            id: 'welcome',
+                            role: 'assistant',
+                            content: config.welcomeMessage || "Hello!",
+                            isWelcome: true
+                        }
+                    ]);
+                }
+            }
+        }
+    }, [config]);
+
+    const initFlow = async () => {
+        setIsAiTyping(true);
+        try {
+            const res = await fetch(`/api/widget/${chatbotId}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trigger: 'init_flow',
+                    conversationId: aiConversationId,
+                    visitorId: visitorId
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                setAiConversationId(data.data.conversationId);
+
+                // Check for completion
+                if (data.data.isFlowComplete) {
+                    localStorage.setItem(`oneminute_flow_complete_${chatbotId}`, 'true');
+                }
+
+                if (data.data.messages) {
+                    const newMsgs = data.data.messages.map((m, i) => ({
+                        id: `${Date.now()}-${i}`,
+                        role: 'assistant',
+                        content: m.text,
+                        options: m.options
+                    }));
+                    setAiMessages(prev => [...prev, ...newMsgs]);
+                } else if (data.data.message) {
+                    setAiMessages(prev => [...prev, {
+                        id: Date.now(),
+                        role: 'assistant',
+                        content: data.data.message
+                    }]);
+                }
+            }
+        } catch (error) {
+            console.error('Flow init error:', error);
+            // Fallback to welcome message if flow fails
             setAiMessages([
                 {
                     id: 'welcome',
                     role: 'assistant',
-                    content: config.welcomeMessage,
+                    content: config?.welcomeMessage || "Hello!",
                     isWelcome: true
                 }
             ]);
+        } finally {
+            setIsAiTyping(false);
         }
-    }, [config]);
+    };
 
     // Initialize Live Chat Welcome Message
     useEffect(() => {
@@ -179,6 +255,55 @@ const ChatWidget = ({ chatbotId }) => {
         }
     };
 
+    const handleOptionClick = async (optionText) => {
+        const userMsg = { id: Date.now(), role: 'user', content: optionText };
+        setAiMessages(prev => [...prev, userMsg]);
+        setIsAiTyping(true);
+
+        try {
+            const res = await fetch(`/api/widget/${chatbotId}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: optionText,
+                    sectionId: activeSection?.id || null,
+                    conversationId: aiConversationId,
+                    visitorId: visitorId
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                setAiConversationId(data.data.conversationId);
+
+                if (data.data.isFlowComplete) {
+                    localStorage.setItem(`oneminute_flow_complete_${chatbotId}`, 'true');
+                }
+
+                if (data.data.messages) {
+                    const newMsgs = data.data.messages.map((m, i) => ({
+                        id: `${Date.now()}-${i}`, // Ensure unique ID
+                        role: 'assistant',
+                        content: m.text,
+                        options: m.options
+                    }));
+                    setAiMessages(prev => [...prev, ...newMsgs]);
+                } else if (data.data.message) {
+                    setAiMessages(prev => [...prev, {
+                        id: Date.now() + 1,
+                        role: 'assistant',
+                        content: data.data.message
+                    }]);
+                }
+            }
+        } catch (error) {
+            console.error('Chat error:', error);
+        } finally {
+            setIsAiTyping(false);
+        }
+    };
+
     const handleAiSend = async () => {
         if (!aiInput.trim()) return;
 
@@ -204,12 +329,26 @@ const ChatWidget = ({ chatbotId }) => {
 
             if (data.success) {
                 setAiConversationId(data.data.conversationId);
-                const aiMsg = {
-                    id: Date.now() + 1,
-                    role: 'assistant',
-                    content: data.data.message
-                };
-                setAiMessages(prev => [...prev, aiMsg]);
+
+                if (data.data.isFlowComplete) {
+                    localStorage.setItem(`oneminute_flow_complete_${chatbotId}`, 'true');
+                }
+
+                if (data.data.messages) {
+                    const newMsgs = data.data.messages.map((m, i) => ({
+                        id: `${Date.now()}-${i}`,
+                        role: 'assistant',
+                        content: m.text,
+                        options: m.options
+                    }));
+                    setAiMessages(prev => [...prev, ...newMsgs]);
+                } else if (data.data.message) {
+                    setAiMessages(prev => [...prev, {
+                        id: Date.now() + 1,
+                        role: 'assistant',
+                        content: data.data.message
+                    }]);
+                }
             }
         } catch (error) {
             console.error('Chat error:', error);
@@ -355,7 +494,59 @@ const ChatWidget = ({ chatbotId }) => {
                                                         {msg.content}
                                                     </div>
 
-                                                    {/* Show Sections ONLY on Welcome Message */}
+                                                    {/* Show Flow Options if available */}
+                                                    {msg.options && msg.options.length > 0 && (
+                                                        <div className="widget-options">
+                                                            {msg.options.map((option, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => handleOptionClick(option)}
+                                                                    className="widget-option-btn"
+                                                                    style={{ borderColor: primaryColor, color: primaryColor }}
+                                                                >
+                                                                    {option}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Show Email Form if type is email */}
+                                                    {msg.type === 'email' && (
+                                                        <div className="widget-email-form">
+                                                            <input
+                                                                type="email"
+                                                                placeholder="name@example.com"
+                                                                className="widget-form-input"
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        if (e.target.checkValidity() && e.target.value.trim()) {
+                                                                            handleOptionClick(e.target.value);
+                                                                        } else {
+                                                                            e.target.reportValidity();
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    const input = e.target.previousElementSibling;
+                                                                    if (input) {
+                                                                        if (input.checkValidity() && input.value.trim()) {
+                                                                            handleOptionClick(input.value);
+                                                                        } else {
+                                                                            input.reportValidity();
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="widget-form-submit"
+                                                                style={{ backgroundColor: primaryColor }}
+                                                            >
+                                                                Submit
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Show Sections ONLY on Welcome Message (Legacy support, maybe remove if Flow covers this?) */}
                                                     {msg.isWelcome && config.sections && config.sections.length > 0 && (
                                                         <div className="widget-sections">
                                                             {config.sections.map(section => (

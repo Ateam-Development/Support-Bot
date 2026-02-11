@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getChatbotById, getSectionsByChatbotId } from '@/lib/db';
+import { getChatbotById, getSectionsByChatbotId, getFlow } from '@/lib/db';
 
 /**
  * GET /api/widget/:chatbotId
@@ -23,6 +23,10 @@ export async function GET(request, { params }) {
         // Get sections
         const sections = await getSectionsByChatbotId(chatbotId);
 
+        // Get flow
+        const flow = await getFlow(chatbotId);
+        const hasActiveFlow = flow && flow.enabled !== false;
+
         // Return public configuration (no sensitive data like API keys)
         const publicConfig = {
             id: chatbot.id,
@@ -34,7 +38,8 @@ export async function GET(request, { params }) {
                 id: s.id,
                 name: s.name,
                 description: s.description
-            }))
+            })),
+            hasFlow: hasActiveFlow
         };
 
         return NextResponse.json({

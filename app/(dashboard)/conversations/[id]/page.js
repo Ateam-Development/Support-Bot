@@ -7,7 +7,8 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase-config';
 import ConversationList from '@/components/conversations/ConversationList';
 import ConversationDetail from '@/components/conversations/ConversationDetail';
-import { ChevronDown, Copy, Check } from 'lucide-react';
+import EmailListModal from '@/components/conversations/EmailListModal';
+import { ChevronDown, Copy, Check, Mail } from 'lucide-react';
 
 export default function ConversationsPage() {
     const params = useParams();
@@ -21,6 +22,10 @@ export default function ConversationsPage() {
     const [chatbotId, setChatbotId] = useState(urlChatbotId || null);
     const [chatbots, setChatbots] = useState([]);
     const [copiedId, setCopiedId] = useState(false);
+
+    // Email Modal State
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [currentChatbot, setCurrentChatbot] = useState(null);
 
     // CRITICAL DEBUG - This should show immediately
     if (typeof window !== 'undefined') {
@@ -95,6 +100,11 @@ export default function ConversationsPage() {
             console.log('[DEBUG-ID] Chatbots response:', data);
             if (data.success && data.data.length > 0) {
                 setChatbots(data.data);
+                // Update current chatbot object for email modal if we have an ID
+                const currentId = chatbotId || urlChatbotId || data.data[0].id;
+                const bot = data.data.find(b => b.id === currentId);
+                if (bot) setCurrentChatbot(bot);
+
                 // Only set default if NO ID provided in URL
                 if (!chatbotId && !urlChatbotId) {
                     console.log('[DEBUG-ID] Setting initial chatbotId:', data.data[0].id);
@@ -221,6 +231,47 @@ export default function ConversationsPage() {
         setTimeout(() => setCopiedId(false), 2000);
     };
 
+    // Email Management Handlers
+    const handleAddEmail = async (email) => {
+        if (!currentChatbot) return;
+        const currentEmails = currentChatbot.notificationEmails || [];
+        const newEmails = [...currentEmails, email];
+        await updateChatbotEmails(newEmails);
+    };
+
+    const handleRemoveEmail = async (email) => {
+        if (!currentChatbot) return;
+        const currentEmails = currentChatbot.notificationEmails || [];
+        const newEmails = currentEmails.filter(e => e !== email);
+        await updateChatbotEmails(newEmails);
+    };
+
+    const updateChatbotEmails = async (emails) => {
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch(`/api/chatbots/${chatbotId}/emails`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ emails })
+            });
+
+            if (!res.ok) throw new Error('Failed to update emails');
+
+            // Update local state
+            setChatbots(prev => prev.map(bot =>
+                bot.id === chatbotId ? { ...bot, notificationEmails: emails } : bot
+            ));
+            setCurrentChatbot(prev => ({ ...prev, notificationEmails: emails }));
+
+        } catch (error) {
+            console.error('Failed to update emails:', error);
+            alert('Failed to update emails');
+        }
+    };
+
     if (loading && !chatbotId) {
         return (
             <div className="flex items-center justify-center h-screen bg-[#0a0a0a]">
@@ -253,7 +304,12 @@ export default function ConversationsPage() {
                         <div className="relative">
                             <select
                                 value={chatbotId || ''}
-                                onChange={(e) => setChatbotId(e.target.value)}
+                                onChange={(e) => {
+                                    setChatbotId(e.target.value);
+                                    // Update current chatbot for modal
+                                    const bot = chatbots.find(b => b.id === e.target.value);
+                                    if (bot) setCurrentChatbot(bot);
+                                }}
                                 className="appearance-none bg-white/5 border border-white/10 rounded-lg pl-4 pr-10 py-2 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer min-w-[200px]"
                             >
                                 {chatbots.map(bot => (
@@ -267,13 +323,25 @@ export default function ConversationsPage() {
                     )}
 
                     {chatbotId && (
-                        <button
-                            onClick={copyChatbotId}
-                            className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 py-2 rounded-lg text-sm transition-all"
-                        >
-                            {copiedId ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                            <span>{copiedId ? 'Copied' : 'Copy ID'}</span>
-                        </button>
+                        <>
+                            <button
+                                onClick={copyChatbotId}
+                                className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 py-2 rounded-lg text-sm transition-all"
+                                title="Copy Chatbot ID"
+                            >
+                                {copiedId ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                <span>{copiedId ? 'Copied' : 'Copy ID'}</span>
+                            </button>
+
+                            <button
+                                onClick={() => setShowEmailModal(true)}
+                                className="flex items-center gap-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 px-3 py-2 rounded-lg text-sm transition-all"
+                                title="Manage Notification Emails"
+                            >
+                                <Mail className="w-4 h-4" />
+                                <span>Emails</span>
+                            </button>
+                        </>
                     )}
                 </div>
             </header>
@@ -296,6 +364,14 @@ export default function ConversationsPage() {
                     />
                 </div>
             </div>
-        </div>
+
+            <EmailListModal
+                isOpen={showEmailModal}
+                onClose={() => setShowEmailModal(false)}
+                emails={currentChatbot?.notificationEmails || []}
+                onAddEmail={handleAddEmail}
+                onRemoveEmail={handleRemoveEmail}
+            />
+        </div >
     );
 }
