@@ -78,7 +78,7 @@ export async function POST(request, { params }) {
             const ownerStatus = await checkUserStatus(chatbot.userId);
             const isOffline = !ownerStatus.online;
             const lastSeenDiff = Date.now() - (ownerStatus.lastSeen || 0);
-            const isInactive = lastSeenDiff > 2 * 60 * 1000; // 2 minutes
+            const isInactive = lastSeenDiff > 5 * 60 * 1000; // 5 minutes
 
             if (isOffline || isInactive) {
                 // Fetch fresh chatbot data to get latest emails
