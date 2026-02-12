@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Send, X, MessageCircle, Home, MessageSquare, Headset } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToMessages } from '@/lib/firebase-realtime';
@@ -151,14 +153,17 @@ const ChatWidget = ({ chatbotId }) => {
                         id: `${Date.now()}-${i}`,
                         role: 'assistant',
                         content: m.text,
-                        options: m.options
+                        options: m.options,
+                        // If this is the LAST message and flow is complete, show sections
+                        showSections: (i === data.data.messages.length - 1) && data.data.isFlowComplete
                     }));
                     setAiMessages(prev => [...prev, ...newMsgs]);
                 } else if (data.data.message) {
                     setAiMessages(prev => [...prev, {
                         id: Date.now(),
                         role: 'assistant',
-                        content: data.data.message
+                        content: data.data.message,
+                        showSections: data.data.isFlowComplete
                     }]);
                 }
             }
@@ -339,14 +344,16 @@ const ChatWidget = ({ chatbotId }) => {
                         id: `${Date.now()}-${i}`,
                         role: 'assistant',
                         content: m.text,
-                        options: m.options
+                        options: m.options,
+                        showSections: (i === data.data.messages.length - 1) && data.data.isFlowComplete
                     }));
                     setAiMessages(prev => [...prev, ...newMsgs]);
                 } else if (data.data.message) {
                     setAiMessages(prev => [...prev, {
                         id: Date.now() + 1,
                         role: 'assistant',
-                        content: data.data.message
+                        content: data.data.message,
+                        showSections: data.data.isFlowComplete
                     }]);
                 }
             }
@@ -490,8 +497,14 @@ const ChatWidget = ({ chatbotId }) => {
                                                     </div>
                                                 )}
                                                 <div className="widget-message-content">
-                                                    <div className={`widget-message-bubble ${msg.role}`} style={msg.role === 'user' ? { backgroundColor: primaryColor } : {}}>
-                                                        {msg.content}
+                                                    <div className={`widget-message-bubble ${msg.role} markdown-content`} style={msg.role === 'user' ? { backgroundColor: primaryColor } : {}}>
+                                                        {msg.role === 'assistant' ? (
+                                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                {msg.content}
+                                                            </ReactMarkdown>
+                                                        ) : (
+                                                            msg.content
+                                                        )}
                                                     </div>
 
                                                     {/* Show Flow Options if available */}
@@ -546,8 +559,8 @@ const ChatWidget = ({ chatbotId }) => {
                                                         </div>
                                                     )}
 
-                                                    {/* Show Sections ONLY on Welcome Message (Legacy support, maybe remove if Flow covers this?) */}
-                                                    {msg.isWelcome && config.sections && config.sections.length > 0 && (
+                                                    {/* Show Sections on Welcome Message OR when explicitly requested */}
+                                                    {(msg.isWelcome || msg.showSections) && config.sections && config.sections.length > 0 && (
                                                         <div className="widget-sections">
                                                             {config.sections.map(section => (
                                                                 <button
