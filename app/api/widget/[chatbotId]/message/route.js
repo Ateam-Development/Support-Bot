@@ -92,9 +92,15 @@ export async function POST(request, { params }) {
             const lastSeenDiff = Date.now() - (ownerStatus.lastSeen || 0);
             const isInactive = lastSeenDiff > 5 * 60 * 1000; // 5 minutes
 
+            console.log(`[DEBUG-EMAIL] Checking presence for user ${chatbot.userId}`);
+            console.log(`[DEBUG-EMAIL] Status: online=${ownerStatus.online}, lastSeen=${new Date(ownerStatus.lastSeen).toISOString()}`);
+            console.log(`[DEBUG-EMAIL] Diff: ${lastSeenDiff}ms, Threshold: ${5 * 60 * 1000}ms`);
+            console.log(`[DEBUG-EMAIL] Decision: isOffline=${isOffline}, isInactive=${isInactive}, SEND=${isOffline || isInactive}`);
+
             if (isOffline || isInactive) {
                 // Use chatbot emails
                 const emails = chatbot.notificationEmails;
+                console.log(`[DEBUG-EMAIL] Notification emails:`, emails);
 
                 if (emails && emails.length > 0) {
                     const subject = `New message from ${currentConv.visitorId || 'Visitor'} - ${chatbot.name}`;
@@ -115,6 +121,9 @@ export async function POST(request, { params }) {
                     `;
 
                     await sendEmail(emails, subject, html);
+                    console.log(`[DEBUG-EMAIL] Email sent successfully.`);
+                } else {
+                    console.log(`[DEBUG-EMAIL] No emails found for chatbot.`);
                 }
             }
         } catch (emailError) {
