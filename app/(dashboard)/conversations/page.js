@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToMessages, subscribeToMetadata } from '@/lib/firebase-realtime';
-import { subscribeToConversations } from '@/lib/db';
+import { subscribeToConversations } from '@/lib/db-client';
 import ConversationList from '@/components/conversations/ConversationList';
 import ConversationDetail from '@/components/conversations/ConversationDetail';
 import EmailListModal from '@/components/conversations/EmailListModal';
