@@ -2,11 +2,15 @@ import Sidebar from "@/components/Sidebar";
 import { ChatbotProvider } from "@/contexts/ChatbotContext";
 
 import DashboardPresence from "@/components/DashboardPresence";
+import { Toaster } from 'sonner';
+import NotificationListener from '@/components/NotificationListener';
 
 export default function DashboardLayout({ children }) {
     return (
         <div className="flex w-full h-full">
             <ChatbotProvider>
+                <NotificationListener />
+                <Toaster richColors position="top-right" />
                 <DashboardPresence />
                 <Sidebar />
                 <main className="flex-1 h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-950 relative">
