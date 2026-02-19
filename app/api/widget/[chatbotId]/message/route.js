@@ -137,8 +137,7 @@ export async function POST(request, { params }) {
             const currentConv = await getConversationById(conversation.id);
             const ownerStatus = await checkUserStatus(chatbot.userId);
             const isOffline = !ownerStatus.online;
-            const lastSeenDiff = Date.now() - (ownerStatus.lastSeen || 0);
-            const isInactive = lastSeenDiff > 5 * 60 * 1000; // 5 minutes
+            const isInactive = lastSeenDiff > 3 * 60 * 1000; // 3 minutes
 
             console.log(`[DEBUG-EMAIL] Checking presence for user ${chatbot.userId}`);
             console.log(`[DEBUG-EMAIL] Status: online=${ownerStatus.online}, lastSeen=${new Date(ownerStatus.lastSeen).toISOString()}`);
@@ -146,9 +145,14 @@ export async function POST(request, { params }) {
             console.log(`[DEBUG-EMAIL] Decision: isOffline=${isOffline}, isInactive=${isInactive}, SEND=${isOffline || isInactive}`);
 
             if (isOffline || isInactive) {
+                // Check for email configuration
+                if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+                    console.error('[DEBUG-EMAIL] Email configuration missing (EMAIL_USER or EMAIL_APP_PASSWORD not set).');
+                }
+
                 // Use chatbot emails
                 const emails = chatbot.notificationEmails;
-                console.log(`[DEBUG-EMAIL] Notification emails:`, emails);
+                console.log(`[DEBUG-EMAIL] Notification condition met. Emails:`, emails);
 
                 if (emails && emails.length > 0) {
                     const subject = `New message from ${currentConv.visitorId || 'Visitor'} - ${chatbot.name}`;
@@ -168,14 +172,20 @@ export async function POST(request, { params }) {
                         </div>
                     `;
 
-                    await sendEmail(emails, subject, html);
-                    console.log(`[DEBUG-EMAIL] Email sent successfully.`);
+                    try {
+                        const info = await sendEmail(emails, subject, html);
+                        console.log(`[DEBUG-EMAIL] Email sent successfully. MessageId: ${info?.messageId}`);
+                    } catch (sendError) {
+                        console.error(`[DEBUG-EMAIL] FAILED to send email:`, sendError);
+                    }
                 } else {
-                    console.log(`[DEBUG-EMAIL] No emails found for chatbot.`);
+                    console.log(`[DEBUG-EMAIL] No emails configured for chatbot.`);
                 }
+            } else {
+                console.log(`[DEBUG-EMAIL] Notification condition NOT met. User is online and active.`);
             }
         } catch (emailError) {
-            console.error('Failed to send notification email:', emailError);
+            console.error('[DEBUG-EMAIL] Failed in notification logic:', emailError);
         }
 
         return NextResponse.json({

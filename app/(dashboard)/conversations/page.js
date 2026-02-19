@@ -241,9 +241,10 @@ export default function ConversationsPage() {
                         {/* MOVED HERE FOR VISIBILITY */}
                         <button
                             onClick={() => setShowEmailModal(true)}
-                            className="bg-red-600 text-white px-4 py-2 rounded shadow-lg z-[9999]"
+                            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg text-sm transition-all border border-white/10"
                         >
-                            MANAGE EMAILS (DEBUG)
+                            <Mail className="w-4 h-4" />
+                            <span>Email Notifications</span>
                         </button>
                     </div>
                     <p className="text-gray-400">Real-time chat with instant updates</p>
