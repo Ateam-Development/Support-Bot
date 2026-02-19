@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import ChatArea from '@/components/ChatArea';
 import { RefreshCw, Copy, Check, Save, Loader2, Palette, CodeXml } from 'lucide-react';
+import Loader from '@/components/Loader';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -165,7 +166,7 @@ export default function ChatbotPage() {
     if (loading) {
         return (
             <div className="h-full flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                <Loader />
             </div>
         );
     }

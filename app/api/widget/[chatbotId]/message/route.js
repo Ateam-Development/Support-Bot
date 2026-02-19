@@ -9,6 +9,46 @@ const {
 const { handleApiError } = require('@/lib/api-utils');
 const { checkUserStatus } = require('@/lib/firebase-realtime');
 const { sendEmail } = require('@/lib/email');
+const { getRealtimeDb } = require('@/lib/firebase-admin');
+
+/**
+ * Sync message to Realtime Database to ensure instant UI updates
+ */
+async function syncToRealtimeDB(conversationId, message, chatbotId) {
+    try {
+        const rtdb = getRealtimeDb();
+
+        // 1. Add message to path: conversations/{conversationId}/messages
+        const messagesRef = rtdb.ref(`conversations/${conversationId}/messages`);
+        await messagesRef.push({
+            ...message,
+            timestamp: message.timestamp || new Date().toISOString()
+        });
+
+        // 2. Update conversation metadata: conversations/{conversationId}/metadata
+        const metadataRef = rtdb.ref(`conversations/${conversationId}/metadata`);
+        await metadataRef.update({
+            lastMessage: message.text || message.content || '',
+            lastMessageType: message.role === 'user' ? 'text' : 'ai', // Simplified
+            lastUpdated: new Date().toISOString(),
+            unreadCount: message.role === 'user' ?
+                require('firebase-admin').database.ServerValue.increment(1) :
+                0 // Reset if bot replies (simplified logic, ideally only reset on read)
+        });
+
+        // 3. Update global unread count for chatbot (for Sidebar badge)
+        if (message.role === 'user') {
+            const statsRef = rtdb.ref(`chatbots/${chatbotId}/stats`);
+            await statsRef.update({
+                unreadCount: require('firebase-admin').database.ServerValue.increment(1)
+            });
+        }
+
+        console.log(`[RTDB-SYNC] Synced message ${message.role} to conversation ${conversationId}`);
+    } catch (error) {
+        console.error('[RTDB-SYNC] Failed to sync:', error);
+    }
+}
 
 /**
  * POST /api/widget/:chatbotId/message
@@ -68,7 +108,11 @@ export async function POST(request, { params }) {
             timestamp: new Date().toISOString()
         };
 
-        await addMessageToConversation(conversation.id, userMessage);
+        // Sync to Firestore and Realtime DB concurrently for speed
+        await Promise.all([
+            addMessageToConversation(conversation.id, userMessage),
+            syncToRealtimeDB(conversation.id, userMessage, chatbotId)
+        ]);
 
         // Get knowledge base
         const knowledge = await getKnowledgeByChatbotId(chatbotId);
@@ -81,7 +125,11 @@ export async function POST(request, { params }) {
             timestamp: new Date().toISOString()
         };
 
-        await addMessageToConversation(conversation.id, botResponse);
+        // Sync Bot Response to Firestore and Realtime DB
+        await Promise.all([
+            addMessageToConversation(conversation.id, botResponse),
+            syncToRealtimeDB(conversation.id, botResponse, chatbotId)
+        ]);
 
         // Check for offline email notification
         try {

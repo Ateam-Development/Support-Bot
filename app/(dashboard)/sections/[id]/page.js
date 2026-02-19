@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatbot } from '@/contexts/ChatbotContext';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import Loader from '@/components/Loader';
 import { motion } from 'framer-motion';
 import CreateSectionDrawer from '@/components/sections/CreateSectionDrawer';
 
@@ -136,7 +137,7 @@ export default function SectionsPage() {
     if (authLoading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <Loader />
             </div>
         );
     }

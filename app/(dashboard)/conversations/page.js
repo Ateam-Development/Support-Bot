@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToMessages, subscribeToMetadata } from '@/lib/firebase-realtime';
+import { subscribeToConversations } from '@/lib/db';
 import ConversationList from '@/components/conversations/ConversationList';
 import ConversationDetail from '@/components/conversations/ConversationDetail';
 import EmailListModal from '@/components/conversations/EmailListModal';
 import { ChevronDown, Copy, Check, Mail } from 'lucide-react';
+import Loader from '@/components/Loader';
 
 export default function ConversationsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -41,10 +43,18 @@ export default function ConversationsPage() {
 
     useEffect(() => {
         if (chatbotId) {
-            fetchConversations();
+            setLoading(true);
+            const unsubscribe = subscribeToConversations(chatbotId, (data) => {
+                console.log('[DEBUG] Realtime conversations update:', data.length);
+                setConversations(data);
+                setLoading(false);
+            });
+
             // Update current chatbot object for email modal
             const bot = chatbots.find(b => b.id === chatbotId);
             if (bot) setCurrentChatbot(bot);
+
+            return () => unsubscribe();
         }
     }, [chatbotId, chatbots]);
 
@@ -63,25 +73,14 @@ export default function ConversationsPage() {
     }, [selectedConversation?.id]);
 
     // Real-time listener for conversation metadata (unread counts)
+    // Removed: Firestore subscribeToConversations handles this now!
+    // keeping the useEffect block empty or removing it to avoid errors if logic depended on it
+    /* 
     useEffect(() => {
         if (!conversations.length) return;
-
-        const unsubscribers = conversations.map(conv =>
-            subscribeToMetadata(conv.id, (metadata) => {
-                if (metadata) {
-                    setConversations(prev => prev.map(c =>
-                        c.id === conv.id
-                            ? { ...c, unreadCount: metadata.unreadCount || 0, lastMessageType: metadata.lastMessageType }
-                            : c
-                    ));
-                }
-            })
-        );
-
-        return () => {
-            unsubscribers.forEach(unsub => unsub());
-        };
+        // ... (OLD LOGIC REMOVED)
     }, [conversations.map(c => c.id).join(',')]);
+    */
 
     const fetchChatbots = async () => {
         try {
@@ -108,30 +107,7 @@ export default function ConversationsPage() {
         }
     };
 
-    const fetchConversations = async () => {
-        try {
-            console.log('[DEBUG] Fetching conversations for chatbotId:', chatbotId);
-            const token = await user.getIdToken();
-            const res = await fetch(`/api/conversations/${chatbotId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                cache: 'no-store'
-            });
-            const data = await res.json();
-            console.log('[DEBUG] Conversations API response:', data);
-            if (data.success) {
-                console.log('[DEBUG] Setting conversations:', data.data);
-                setConversations(data.data);
-            } else {
-                console.error('[DEBUG] API returned error:', data);
-            }
-        } catch (error) {
-            console.error('[DEBUG] Failed to fetch conversations:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // fetchConversations removed in favor of real-time listener
 
     const handleSelectConversation = async (conv) => {
         setSelectedConversation(conv);
@@ -250,10 +226,7 @@ export default function ConversationsPage() {
     if (loading && !chatbotId) {
         return (
             <div className="flex items-center justify-center h-screen bg-[#0a0a0a]">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-400">Loading conversations...</p>
-                </div>
+                <Loader />
             </div>
         );
     }

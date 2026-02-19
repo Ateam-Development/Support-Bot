@@ -2,6 +2,8 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ChatbotList from '@/components/ChatbotList';
+import Loader from '@/components/Loader';
+
 import { MessageSquare, Users, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,8 +19,8 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center h-full bg-black/50">
+        <Loader />
       </div>
     );
   }

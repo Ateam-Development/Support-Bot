@@ -13,6 +13,7 @@ import {
     Loader2,
     MessageSquare
 } from 'lucide-react';
+import Loader from '@/components/Loader';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardPage() {
@@ -121,7 +122,7 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <div className="h-full flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                <Loader />
             </div>
         );
     }

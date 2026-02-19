@@ -9,6 +9,7 @@ import ConversationList from '@/components/conversations/ConversationList';
 import ConversationDetail from '@/components/conversations/ConversationDetail';
 import EmailListModal from '@/components/conversations/EmailListModal';
 import { ChevronDown, Copy, Check, Mail } from 'lucide-react';
+import Loader from '@/components/Loader';
 
 export default function ConversationsPage() {
     const params = useParams();
@@ -275,10 +276,7 @@ export default function ConversationsPage() {
     if (loading && !chatbotId) {
         return (
             <div className="flex items-center justify-center h-screen bg-[#0a0a0a]">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-400">Loading conversations...</p>
-                </div>
+                <Loader />
             </div>
         );
     }

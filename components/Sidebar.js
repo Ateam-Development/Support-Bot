@@ -12,17 +12,30 @@ import {
     LogOut,
     GitBranch
 } from 'lucide-react';
+import AnimatedLogo from '@/components/AnimatedLogo';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import ChatbotSelector from './ChatbotSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatbot } from '@/contexts/ChatbotContext';
+import { subscribeToChatbotStats } from '@/lib/firebase-realtime';
 
 const Sidebar = () => {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();
     const { selectedChatbot } = useChatbot();
+    const [unreadCount, setUnreadCount] = React.useState(0);
+
+    React.useEffect(() => {
+        if (!selectedChatbot) return;
+
+        const unsubscribe = subscribeToChatbotStats(selectedChatbot.id, (stats) => {
+            setUnreadCount(stats?.unreadCount || 0);
+        });
+
+        return () => unsubscribe();
+    }, [selectedChatbot]);
 
     const handleLogout = async () => {
         try {
@@ -61,7 +74,8 @@ const Sidebar = () => {
             name: 'Conversations',
             icon: History,
             path: selectedChatbot ? `/conversations/${selectedChatbot.id}` : '/conversations',
-            disabled: !selectedChatbot
+            disabled: !selectedChatbot,
+            badge: unreadCount > 0 ? unreadCount : null
         },
         {
             name: 'Flow',
@@ -85,8 +99,8 @@ const Sidebar = () => {
         <div className="w-64 h-screen bg-[#0a0a0a] border-r border-white/5 flex flex-col flex-none z-50">
             {/* Header */}
             <div className="p-6 flex items-center gap-3 border-b border-white/5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">A</span>
+                <div className="w-12 h-12 flex items-center justify-center">
+                    <AnimatedLogo />
                 </div>
                 <span className="text-white font-bold tracking-wide">Adeptimize Solutions</span>
             </div>
@@ -125,7 +139,12 @@ const Sidebar = () => {
                             )}
                         >
                             <item.icon className={cn("w-5 h-5", isActive ? "text-blue-500" : "text-gray-500 group-hover:text-white")} />
-                            <span className="font-medium text-sm">{item.name}</span>
+                            <span className="font-medium text-sm flex-1">{item.name}</span>
+                            {item.badge && (
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                    {item.badge > 99 ? '99+' : item.badge}
+                                </span>
+                            )}
                         </Link>
                     );
                 })}
