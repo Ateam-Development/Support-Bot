@@ -12,7 +12,9 @@ import {
 } from '@/lib/db';
 import { addRealtimeMessage } from '@/lib/firebase-realtime';
 import { FlowEngine } from '@/lib/flow-engine';
-import { admin } from '@/lib/firebase-admin'; // Added this import based on the provided edit
+import { admin } from '@/lib/firebase-admin';
+import { retrieveContext } from '@/lib/rag';
+import { generateMultiProviderCompletion } from '@/lib/llm';
 
 export async function OPTIONS() {
     return NextResponse.json({}, {
@@ -269,40 +271,6 @@ export async function POST(request, { params }) {
         // END FLOW LOGIC
         // =================================================================================
 
-        // Get knowledge base
-        let knowledgeItems = await getKnowledgeByChatbotId(chatbotId);
-
-        // Filter by section if active
-        let contextMessage = '';
-        if (sectionId) {
-            const sections = await getSectionsByChatbotId(chatbotId);
-            const activeSection = sections.find(s => s.id === sectionId);
-
-            if (activeSection && activeSection.sources && activeSection.sources.length > 0) {
-                knowledgeItems = knowledgeItems.filter(k =>
-                    activeSection.sources.includes(k.id)
-                );
-                contextMessage = `Focus on answering questions about ${activeSection.name}. ${activeSection.description || ''}`;
-            }
-        }
-
-        // Build context from knowledge base
-        const knowledgeContext = knowledgeItems
-            .map(k => {
-                if (k.type === 'text') {
-                    return k.content;
-                } else if (k.type === 'website') {
-                    return k.metadata?.extractedText || '';
-                } else if (k.type === 'file') {
-                    return k.metadata?.extractedText || '';
-                }
-                return '';
-            })
-            .filter(Boolean)
-            .join('\n\n');
-
-
-
         // STOP if this was an Init Trigger that failed to produce a Flow Response
         if (trigger === 'init_flow' && !flowResponse) {
             // DEBUG INFO
@@ -317,39 +285,56 @@ export async function POST(request, { params }) {
             });
         }
 
-        // Determine which API to use
-        const useOpenAI = chatbot.openaiApiKey && chatbot.openaiApiKey.trim() !== '';
-        const useGemini = chatbot.geminiApiKey && chatbot.geminiApiKey.trim() !== '';
-        const useMistral = chatbot.mistralApiKey && chatbot.mistralApiKey.trim() !== '';
+        // Section Tone & Scope Filtering
+        let allowedKnowledgeIds = null;
+        let sectionTone = 'Neutral';
+        let sectionScope = null;
+
+        if (sectionId) {
+            const sections = await getSectionsByChatbotId(chatbotId);
+            const activeSection = sections.find(s => s.id === sectionId);
+
+            if (activeSection) {
+                sectionTone = activeSection.tone || 'Neutral';
+                sectionScope = {
+                    ...(typeof activeSection.scope === 'object' && activeSection.scope ? activeSection.scope : {}),
+                    sectionName: activeSection.name,
+                    description: activeSection.description || (typeof activeSection.scope === 'string' ? activeSection.scope : '')
+                };
+                if (activeSection.sources && activeSection.sources.length > 0) {
+                    allowedKnowledgeIds = activeSection.sources;
+                }
+            }
+        }
+
+        // Retrieve Context Chunks via RAG Engine
+        let contextChunks = [];
+        try {
+            contextChunks = await retrieveContext(chatbotId, message, {
+                allowedKnowledgeIds,
+                topK: 5,
+                provider: chatbot.provider || chatbot.model || 'gemini'
+            });
+        } catch (ragErr) {
+            console.error('[RAG-WIDGET-CHAT] Error retrieving context:', ragErr);
+        }
 
         let aiResponse;
-
-        if (useOpenAI) {
-            aiResponse = await callOpenAI(
-                chatbot.openaiApiKey,
-                chatbot.systemMessage || 'You are a helpful assistant.',
-                knowledgeContext,
-                contextMessage,
-                message
-            );
-        } else if (useMistral) {
-            aiResponse = await callMistral(
-                chatbot.mistralApiKey,
-                chatbot.systemMessage || 'You are a helpful assistant.',
-                knowledgeContext,
-                contextMessage,
-                message
-            );
-        } else if (useGemini) {
-            aiResponse = await callGemini(
-                chatbot.geminiApiKey,
-                chatbot.systemMessage || 'You are a helpful assistant.',
-                knowledgeContext,
-                contextMessage,
-                message
-            );
-        } else {
-            aiResponse = 'Please configure an API key (OpenAI, Gemini, or Mistral) to enable chat functionality.';
+        try {
+            aiResponse = await generateMultiProviderCompletion({
+                chatbot,
+                provider: chatbot.provider || chatbot.model,
+                model: chatbot.modelName,
+                systemMessage: chatbot.systemMessage || 'You are a helpful assistant.',
+                history: conversation.messages || [],
+                userMessage: message,
+                contextChunks,
+                sectionTone,
+                sectionScope
+            });
+        } catch (aiErr) {
+            console.error('[AI-WIDGET-CHAT] Error generating response:', aiErr);
+            aiResponse = `I'm having trouble responding right now. Please verify your AI provider API key in chatbot settings.`;
         }
 
         // Add AI message to conversation
@@ -383,156 +368,4 @@ export async function POST(request, { params }) {
             { status: 500 }
         );
     }
-}
-
-/**
- * Call OpenAI API
- */
-async function callOpenAI(apiKey, systemMessage, knowledgeContext, contextMessage, userMessage) {
-    const messages = [
-        {
-            role: 'system',
-            content: systemMessage
-        }
-    ];
-
-    if (knowledgeContext) {
-        messages.push({
-            role: 'system',
-            content: `Knowledge Base:\n${knowledgeContext}`
-        });
-    }
-
-    if (contextMessage) {
-        messages.push({
-            role: 'system',
-            content: contextMessage
-        });
-    }
-
-    messages.push({
-        role: 'user',
-        content: userMessage
-    });
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 500
-        })
-    });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-}
-
-/**
- * Call Gemini API
- */
-async function callGemini(apiKey, systemMessage, knowledgeContext, contextMessage, userMessage) {
-    let prompt = `${systemMessage}\n\n`;
-
-    if (knowledgeContext) {
-        prompt += `Knowledge Base:\n${knowledgeContext}\n\n`;
-    }
-
-    if (contextMessage) {
-        prompt += `${contextMessage}\n\n`;
-    }
-
-    prompt += `User: ${userMessage}\n\nAssistant:`;
-
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 500
-                }
-            })
-        }
-    );
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Gemini API error: ${error.error?.message || 'Unknown error'}`);
-    }
-
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
-}
-
-/**
- * Call Mistral API
- */
-async function callMistral(apiKey, systemMessage, knowledgeContext, contextMessage, userMessage) {
-    const messages = [
-        {
-            role: 'system',
-            content: systemMessage
-        }
-    ];
-
-    if (knowledgeContext) {
-        messages.push({
-            role: 'system',
-            content: `Knowledge Base:\n${knowledgeContext}`
-        });
-    }
-
-    if (contextMessage) {
-        messages.push({
-            role: 'system',
-            content: contextMessage
-        });
-    }
-
-    messages.push({
-        role: 'user',
-        content: userMessage
-    });
-
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: 'mistral-large-latest',
-            messages: messages,
-            temperature: 0.7
-        })
-    });
-
-    if (!response.ok) {
-        const error = await response.json();
-        const errorMessage = error.error?.message || error.message || JSON.stringify(error) || 'Unknown error';
-        throw new Error(`Mistral API error: ${errorMessage}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
 }

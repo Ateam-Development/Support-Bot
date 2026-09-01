@@ -3,12 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Trash2, Globe, Clock, AlertTriangle, Check, RotateCcw, Monitor } from 'lucide-react';
 import { useChatbot } from '@/contexts/ChatbotContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SettingsPage() {
+    const { user, loading: authLoading } = useAuth();
     // Context
     const { chatbots, selectedChatbot, updateChatbot, deleteChatbot: contextDeleteChatbot } = useChatbot();
 
     // Local State
+    const [workspace, setWorkspace] = useState({ name: 'My Workspace' });
+    const [loadingWorkspace, setLoadingWorkspace] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [timezone, setTimezone] = useState('');
 
@@ -23,7 +27,9 @@ export default function SettingsPage() {
 
     // Fetch Workspace Data
     useEffect(() => {
-        fetchWorkspace();
+        if (!authLoading && user) {
+            fetchWorkspace();
+        }
 
         // Realtime Clock
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -38,17 +44,20 @@ export default function SettingsPage() {
         }
 
         return () => clearInterval(timer);
-    }, []);
+    }, [user, authLoading]);
 
     const fetchWorkspace = async () => {
         try {
             setLoadingWorkspace(true);
-            const res = await fetch('/api/workspace');
+            const token = user ? await user.getIdToken() : '';
+            const res = await fetch('/api/workspace', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
             if (res.ok) {
                 const wsData = await res.json();
-                setWorkspace(wsData.data);
-                setTempWorkspaceName(wsData.data.name);
+                setWorkspace(wsData.data || { name: 'My Workspace' });
+                setTempWorkspaceName(wsData.data?.name || 'My Workspace');
             }
         } catch (error) {
             console.error('Error fetching workspace settings:', error);

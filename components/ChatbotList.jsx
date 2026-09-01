@@ -5,9 +5,11 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CreateChatbotModal from './CreateChatbotModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChatbot } from '@/contexts/ChatbotContext';
 
 export default function ChatbotList() {
     const { user, loading: authLoading } = useAuth();
+    const { selectChatbot, addChatbotToState } = useChatbot();
     const [chatbots, setChatbots] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,6 +41,7 @@ export default function ChatbotList() {
 
     const handleChatbotCreated = (newChatbot) => {
         setChatbots([newChatbot, ...chatbots]);
+        addChatbotToState(newChatbot);
     };
 
     const getColorClass = (colorName) => {
@@ -102,6 +105,7 @@ export default function ChatbotList() {
 
                         <Link
                             href={`/chatbot/${chatbot.id}`}
+                            onClick={() => selectChatbot(chatbot)}
                             className="mt-4 flex items-center gap-2 text-sm font-medium text-gray-400 group-hover:text-white transition-colors"
                         >
                             Manage Chatbot <ArrowRight className="w-4 h-4" />

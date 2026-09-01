@@ -38,8 +38,12 @@ export default function ConversationList({
     };
 
     const getLastMessage = (conv) => {
-        // API returns lastMessage as a string
-        return conv.lastMessage || 'No messages yet';
+        if (conv.lastMessage) return conv.lastMessage;
+        if (conv.messages && conv.messages.length > 0) {
+            const lastObj = conv.messages[conv.messages.length - 1];
+            return lastObj.content || lastObj.text || 'No messages yet';
+        }
+        return 'No messages yet';
     };
 
     const filteredConversations = conversations.filter(conv => {
@@ -83,7 +87,12 @@ export default function ConversationList({
                     <div className="p-2">
                         {filteredConversations.map((conv) => {
                             const isSelected = conv.id === selectedId;
-                            const hasUnread = conv.unreadCount > 0;
+                            // Safely handle unreadCount which could be undefined, string, or number
+                            let numericUnread = 0;
+                            if (conv.unreadCount !== undefined && conv.unreadCount !== null) {
+                                numericUnread = Number(conv.unreadCount);
+                            }
+                            const hasUnread = !isNaN(numericUnread) && numericUnread > 0;
                             const lastMessageType = conv.lastMessageType || 'ai';
 
                             return (
@@ -131,7 +140,7 @@ export default function ConversationList({
                                                 {/* Unread Badge */}
                                                 {hasUnread && (
                                                     <span className="ml-2 flex-shrink-0 bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                                                        {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                                                        {numericUnread > 9 ? '9+' : numericUnread}
                                                     </span>
                                                 )}
                                             </div>

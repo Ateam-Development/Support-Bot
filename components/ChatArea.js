@@ -238,25 +238,55 @@ const ChatArea = ({ primaryColor = 'blue', welcomeMessage, chatbotId, user, them
 
             {/* Active Section Banner */}
             {activeSection && (
-                <div className={`px-6 py-3 border-t ${borderColor} flex items-center justify-between ${isWhiteTheme ? 'bg-blue-50' : 'bg-blue-900/20'}`}>
+                <div className={`px-6 py-2.5 border-t ${borderColor} flex items-center justify-between ${isWhiteTheme ? 'bg-blue-50' : 'bg-blue-900/20'}`}>
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${bgColor}`}></div>
-                        <span className={`text-sm font-medium ${textPrimary}`}>
-                            Asking about: <span className="font-bold">{activeSection.name}</span>
+                        <span className={`text-xs font-medium ${textPrimary}`}>
+                            Filtered to topic: <span className="font-bold">{activeSection.name}</span>
                         </span>
                     </div>
                     <button
                         onClick={handleExitSection}
-                        className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isWhiteTheme ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
+                        className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${isWhiteTheme ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
                     >
                         <X className="w-3 h-3" />
-                        Exit
+                        Clear Filter
                     </button>
                 </div>
             )}
 
+            {/* Persistent Section Chips Bar */}
+            {sections && sections.length > 0 && (
+                <div className="px-6 pt-3 pb-0 max-w-3xl mx-auto flex items-center gap-2 overflow-x-auto">
+                    <span className={`text-[11px] font-semibold uppercase tracking-wider ${textSecondary} flex-none opacity-80`}>Topics:</span>
+                    <button
+                        onClick={() => setActiveSection(null)}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all flex-none ${!activeSection
+                            ? `${bgColor} text-white border-transparent shadow-sm font-medium`
+                            : isWhiteTheme
+                                ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
+                                : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'}`}
+                    >
+                        🌐 All
+                    </button>
+                    {sections.map(section => (
+                        <button
+                            key={`studio-bar-${section.id}`}
+                            onClick={() => handleSectionClick(section)}
+                            className={`text-xs px-3 py-1 rounded-full border transition-all flex-none ${activeSection?.id === section.id
+                                ? `${bgColor} text-white border-transparent shadow-sm font-medium`
+                                : isWhiteTheme
+                                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
+                                    : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'}`}
+                        >
+                            {section.name}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Input Area */}
-            <div className="p-6">
+            <div className="p-6 pt-3">
                 <div className="max-w-3xl mx-auto relative group">
                     <div className={`relative ${inputBg} rounded-xl flex items-center p-2 border ${inputBorder} focus-within:${inputFocusBorder} transition-colors`}>
                         <input

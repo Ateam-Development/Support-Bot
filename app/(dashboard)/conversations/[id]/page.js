@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToMessages, subscribeToMetadata } from '@/lib/firebase-realtime';
+import { subscribeToMessages } from '@/lib/firebase-realtime';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase-config';
 import ConversationList from '@/components/conversations/ConversationList';
@@ -67,26 +67,10 @@ export default function ConversationsPage() {
         return () => unsubscribe();
     }, [selectedConversation?.id]);
 
-    // Real-time listener for conversation metadata (unread counts)
-    useEffect(() => {
-        if (!conversations.length) return;
+    // NOTE: We intentionally do NOT subscribe to Realtime DB metadata here.
+    // The Realtime DB resets unreadCount=0 when the bot replies (in message/route.js),
+    // which would wipe the badge. Firestore is the authoritative source for unreadCount.
 
-        const unsubscribers = conversations.map(conv =>
-            subscribeToMetadata(conv.id, (metadata) => {
-                if (metadata) {
-                    setConversations(prev => prev.map(c =>
-                        c.id === conv.id
-                            ? { ...c, unreadCount: metadata.unreadCount || 0, lastMessageType: metadata.lastMessageType }
-                            : c
-                    ));
-                }
-            })
-        );
-
-        return () => {
-            unsubscribers.forEach(unsub => unsub());
-        };
-    }, [conversations.map(c => c.id).join(',')]);
 
     const fetchChatbots = async () => {
         try {
@@ -153,9 +137,22 @@ export default function ConversationsPage() {
             setConversations(convs);
             setLoading(false);
             console.log('[DEBUG-ID] Realtime update. Count:', convs.length);
-        }, (error) => {
-            console.error('[DEBUG-ID] Snapshot error:', error);
-            setLoading(false);
+        }, async (error) => {
+            console.warn('[DEBUG-ID] Client Firestore listener permission blocked, using server API fallback:', error.message);
+            try {
+                const token = await user.getIdToken();
+                const res = await fetch(`/api/conversations/${chatbotId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setConversations(data.data || []);
+                }
+            } catch (fallbackErr) {
+                console.error('[DEBUG-ID] Server fallback error:', fallbackErr);
+            } finally {
+                setLoading(false);
+            }
         });
 
         return () => unsubscribe();

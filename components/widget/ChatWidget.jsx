@@ -79,12 +79,21 @@ const ChatWidget = ({ chatbotId }) => {
         }
         setVisitorId(storedId);
 
+        // Restore active conversation ID for this chatbot
+        if (chatbotId) {
+            const savedConvId = localStorage.getItem(`oneminute_conv_${chatbotId}`);
+            if (savedConvId) {
+                setAiConversationId(savedConvId);
+                setLiveConversationId(savedConvId);
+            }
+        }
+
         // Check mobile
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
-    }, []);
+    }, [chatbotId]);
 
     useEffect(() => {
         fetchConfig();
@@ -140,8 +149,9 @@ const ChatWidget = ({ chatbotId }) => {
 
             const data = await res.json();
 
-            if (data.success) {
+            if (data.success && data.data?.conversationId) {
                 setAiConversationId(data.data.conversationId);
+                localStorage.setItem(`oneminute_conv_${chatbotId}`, data.data.conversationId);
 
                 // Check for completion
                 if (data.data.isFlowComplete) {
@@ -215,7 +225,7 @@ const ChatWidget = ({ chatbotId }) => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [aiMessages, liveMessages, isAiTyping, isLiveTyping, activeTab]);
+    }, [aiMessages, liveMessages, isAiTyping, isLiveTyping, activeTab, activeSection]);
 
     // Notify parent window about resize needs
     useEffect(() => {
@@ -253,11 +263,23 @@ const ChatWidget = ({ chatbotId }) => {
     };
 
     const scrollToBottom = () => {
-        if (activeTab === 'home') {
-            aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            liveMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
+        const scroll = () => {
+            if (activeTab === 'home') {
+                const container = aiMessagesEndRef.current?.parentElement;
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            } else {
+                const container = liveMessagesEndRef.current?.parentElement;
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+        };
+        // Multi-stage scroll to catch layout shifts
+        scroll();
+        setTimeout(scroll, 100);
+        setTimeout(scroll, 500);
     };
 
     const handleOptionClick = async (optionText) => {
@@ -332,8 +354,9 @@ const ChatWidget = ({ chatbotId }) => {
 
             const data = await res.json();
 
-            if (data.success) {
+            if (data.success && data.data?.conversationId) {
                 setAiConversationId(data.data.conversationId);
+                localStorage.setItem(`oneminute_conv_${chatbotId}`, data.data.conversationId);
 
                 if (data.data.isFlowComplete) {
                     localStorage.setItem(`oneminute_flow_complete_${chatbotId}`, 'true');
@@ -383,10 +406,9 @@ const ChatWidget = ({ chatbotId }) => {
 
             const data = await res.json();
 
-            if (data.success) {
-                if (!liveConversationId) {
-                    setLiveConversationId(data.data.conversationId);
-                }
+            if (data.success && data.data?.conversationId) {
+                setLiveConversationId(data.data.conversationId);
+                localStorage.setItem(`oneminute_conv_${chatbotId}`, data.data.conversationId);
             }
         } catch (error) {
             console.error('Live chat error:', error);
@@ -486,7 +508,7 @@ const ChatWidget = ({ chatbotId }) => {
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -20 }}
                                     transition={{ duration: 0.2 }}
-                                    style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
+                                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}
                                 >
                                     <div className="widget-messages">
                                         {aiMessages.map((msg) => (
@@ -514,8 +536,14 @@ const ChatWidget = ({ chatbotId }) => {
                                                                 <button
                                                                     key={idx}
                                                                     onClick={() => handleOptionClick(option)}
+                                                                    disabled={isAiTyping}
                                                                     className="widget-option-btn"
-                                                                    style={{ borderColor: primaryColor, color: primaryColor }}
+                                                                    style={{
+                                                                        borderColor: primaryColor,
+                                                                        color: primaryColor,
+                                                                        opacity: isAiTyping ? 0.5 : 1,
+                                                                        cursor: isAiTyping ? 'not-allowed' : 'pointer'
+                                                                    }}
                                                                 >
                                                                     {option}
                                                                 </button>
@@ -588,15 +616,45 @@ const ChatWidget = ({ chatbotId }) => {
                                                 </div>
                                             </div>
                                         )}
+                                        {/* Spacer to guarantee the last message is fully above the input area */}
+                                        <div style={{ height: '80px', flexShrink: 0 }} />
                                         <div ref={aiMessagesEndRef} />
                                     </div>
 
                                     {/* AI Input */}
                                     <div className="widget-input-container">
+                                        {/* Persistent Topic Chips Selector */}
+                                        {config?.sections && config.sections.length > 0 && (
+                                            <div className="widget-chips-bar">
+                                                <span className="widget-chips-label">Topics:</span>
+                                                <div className="widget-chips-scroll">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveSection(null)}
+                                                        className={`widget-chip-pill ${!activeSection ? 'active' : ''}`}
+                                                        style={!activeSection ? { backgroundColor: primaryColor, color: 'white', borderColor: primaryColor } : {}}
+                                                    >
+                                                        🌐 All
+                                                    </button>
+                                                    {config.sections.map(section => (
+                                                        <button
+                                                            key={`bar-chip-${section.id}`}
+                                                            type="button"
+                                                            onClick={() => handleSectionClick(section)}
+                                                            className={`widget-chip-pill ${activeSection?.id === section.id ? 'active' : ''}`}
+                                                            style={activeSection?.id === section.id ? { backgroundColor: primaryColor, color: 'white', borderColor: primaryColor } : {}}
+                                                        >
+                                                            {section.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {activeSection && (
                                             <div className="widget-input-section-badge">
-                                                <span>Topic: {activeSection.name}</span>
-                                                <button onClick={() => setActiveSection(null)}><X size={12} /></button>
+                                                <span>Topic: <strong>{activeSection.name}</strong></span>
+                                                <button onClick={() => setActiveSection(null)} title="Clear topic filter"><X size={12} /></button>
                                             </div>
                                         )}
                                         <div className="widget-input-wrapper">

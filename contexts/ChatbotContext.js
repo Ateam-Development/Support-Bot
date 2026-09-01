@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { chatbotAPI } from '../lib/api';
 import { useAuth } from './AuthContext';
+import { usePathname } from 'next/navigation';
 
 const ChatbotContext = createContext();
 
@@ -13,6 +14,7 @@ export function ChatbotProvider({ children }) {
     const [error, setError] = useState(null);
 
     const { user, loading: authLoading } = useAuth();
+    const pathname = usePathname();
 
     // Load chatbots on mount (when authenticated)
     useEffect(() => {
@@ -20,9 +22,31 @@ export function ChatbotProvider({ children }) {
             loadChatbots();
         } else if (!authLoading && !user) {
             setChatbots([]);
+            setSelectedChatbot(null);
             setLoading(false);
         }
     }, [user, authLoading]);
+
+    // Automatically sync selectedChatbot with current URL ID
+    useEffect(() => {
+        if (!chatbots || chatbots.length === 0 || !pathname) return;
+
+        // Extract ID from pathname e.g. /chatbot/xyz, /knowledge/xyz, /dashboard/xyz
+        const segments = pathname.split('/').filter(Boolean);
+        if (segments.length >= 2) {
+            const possibleId = segments[1];
+            const matchingBot = chatbots.find(b => b.id === possibleId);
+            if (matchingBot && selectedChatbot?.id !== matchingBot.id) {
+                setSelectedChatbot(matchingBot);
+                return;
+            }
+        }
+
+        // Fallback: if no chatbot selected, default to the first one
+        if (!selectedChatbot && chatbots.length > 0) {
+            setSelectedChatbot(chatbots[0]);
+        }
+    }, [pathname, chatbots, selectedChatbot]);
 
     // Load all chatbots
     const loadChatbots = async () => {
@@ -36,8 +60,16 @@ export function ChatbotProvider({ children }) {
             if (response.success && response.data) {
                 setChatbots(response.data);
 
-                // Select first chatbot if none selected
-                if (!selectedChatbot && response.data.length > 0) {
+                // Sync with current URL or pick first
+                const segments = (pathname || '').split('/').filter(Boolean);
+                let matched = null;
+                if (segments.length >= 2) {
+                    matched = response.data.find(b => b.id === segments[1]);
+                }
+
+                if (matched) {
+                    setSelectedChatbot(matched);
+                } else if (response.data.length > 0) {
                     setSelectedChatbot(response.data[0]);
                 }
             }
@@ -57,7 +89,7 @@ export function ChatbotProvider({ children }) {
 
             if (response.success && response.data) {
                 const newChatbot = response.data;
-                setChatbots(prev => [newChatbot, ...prev]);
+                setChatbots(prev => [newChatbot, ...prev.filter(b => b.id !== newChatbot.id)]);
                 setSelectedChatbot(newChatbot);
                 return newChatbot;
             }
@@ -65,6 +97,12 @@ export function ChatbotProvider({ children }) {
             console.error('Error creating chatbot:', err);
             throw err;
         }
+    };
+
+    const addChatbotToState = (newChatbot) => {
+        if (!newChatbot) return;
+        setChatbots(prev => [newChatbot, ...prev.filter(b => b.id !== newChatbot.id)]);
+        setSelectedChatbot(newChatbot);
     };
 
     // Update chatbot
@@ -122,6 +160,7 @@ export function ChatbotProvider({ children }) {
         error,
         loadChatbots,
         createChatbot,
+        addChatbotToState,
         updateChatbot,
         deleteChatbot,
         selectChatbot

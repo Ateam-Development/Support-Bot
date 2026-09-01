@@ -48,7 +48,7 @@ export async function PUT(request, { params }) {
         const { user } = authResult;
         const { id } = await params;
         const body = await request.json();
-        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, mistralApiKey, systemMessage, config, allowedOrigins } = body;
+        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, mistralApiKey, systemMessage, model, provider, modelName, config, allowedOrigins } = body;
 
         // Verify ownership
         const ownershipResult = await verifyChatbotOwnership(id, user.uid);
@@ -68,6 +68,9 @@ export async function PUT(request, { params }) {
         if (geminiApiKey !== undefined) updates.geminiApiKey = geminiApiKey;
         if (mistralApiKey !== undefined) updates.mistralApiKey = mistralApiKey;
         if (systemMessage !== undefined) updates.systemMessage = systemMessage;
+        if (model !== undefined) updates.model = model;
+        if (provider !== undefined) updates.provider = provider;
+        if (modelName !== undefined) updates.modelName = modelName;
         if (config) updates.config = { ...chatbot.config, ...config };
 
         // Allowed Origins for CORS/Security

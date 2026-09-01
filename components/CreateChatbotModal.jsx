@@ -2,8 +2,14 @@
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
+import { useChatbot } from '@/contexts/ChatbotContext';
+import { useRouter } from 'next/navigation';
 
 export default function CreateChatbotModal({ isOpen, onClose, onCreated }) {
+    const { user } = useAuth();
+    const { addChatbotToState, selectChatbot } = useChatbot();
+    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -24,22 +30,30 @@ export default function CreateChatbotModal({ isOpen, onClose, onCreated }) {
         setLoading(true);
 
         try {
+            const token = user ? await user.getIdToken() : '';
             const res = await fetch('/api/chatbots', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(formData)
             });
 
             const data = await res.json();
 
-            if (data.success) {
-                onCreated(data.data);
+            if (data.success && data.data) {
+                const newBot = data.data;
+                addChatbotToState(newBot);
+                selectChatbot(newBot);
+                if (onCreated) onCreated(newBot);
                 onClose();
                 setFormData({
                     name: '',
                     welcomeMessage: 'Hi! How can I help you today?',
                     primaryColor: 'blue'
                 });
+                router.push(`/dashboard/${newBot.id}`);
             }
         } catch (error) {
             console.error('Failed to create chatbot:', error);

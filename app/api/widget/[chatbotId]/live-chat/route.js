@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getChatbotById, createConversation, addMessageToConversation, getConversationById, getConversationByVisitorId } from '@/lib/db';
-import { addRealtimeMessage, checkUserStatus } from '@/lib/firebase-realtime';
+import { addRealtimeMessage } from '@/lib/firebase-realtime';
+import { getRealtimeDb } from '@/lib/firebase-admin';
 import { sendEmail } from '@/lib/email';
 
 /**
@@ -73,39 +74,56 @@ export async function POST(request, { params }) {
             console.error('Realtime DB sync failed:', e);
         }
 
-        // Check for offline email notification
+        // Check for offline email notification: Only send if dashboard is NOT live / opened
         try {
-            const ownerStatus = await checkUserStatus(chatbot.userId);
-            const isOffline = !ownerStatus.online;
-            const lastSeenDiff = Date.now() - (ownerStatus.lastSeen || 0);
-            const isInactive = lastSeenDiff > 5 * 60 * 1000; // 5 minutes
+            let isDashboardLive = false;
 
-            if (isOffline || isInactive) {
-                // Fetch fresh chatbot data to get latest emails
-                // We already have 'chatbot' object but it might be stale if updated recently
-                // However, for performance we can use the one we fetched
+            if (chatbot.userId) {
+                try {
+                    const rtdb = getRealtimeDb();
+                    if (rtdb) {
+                        const presenceSnap = await rtdb.ref(`presence/${chatbot.userId}`).once('value');
+                        const ownerStatus = presenceSnap.val();
+                        if (ownerStatus) {
+                            const lastSeenDiff = Date.now() - (ownerStatus.lastSeen || 0);
+                            // Online if flag is true and updated within last 60 seconds
+                            if (ownerStatus.online === true && lastSeenDiff < 60 * 1000) {
+                                isDashboardLive = true;
+                            }
+                        }
+                    }
+                } catch (presenceErr) {
+                    console.warn('[PRESENCE-CHECK] Error checking dashboard presence:', presenceErr.message);
+                }
+            }
+
+            // If dashboard is NOT live/opened, send notification email to configured emails
+            if (!isDashboardLive) {
                 const emails = chatbot.notificationEmails;
 
                 if (emails && emails.length > 0) {
-                    const subject = `New message from ${visitorId || 'Visitor'} - ${chatbot.name}`;
+                    console.log(`[OFFLINE-EMAIL] Dashboard is not active. Sending email notification to: ${emails.join(', ')}`);
+                    const subject = `[Live Support] New message from ${visitorId || 'Visitor'} on ${chatbot.name}`;
                     const html = `
-                        <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                            <h2>New Message Received</h2>
-                            <p>You have a new message from <strong>${visitorId || 'Visitor'}</strong> on <strong>${chatbot.name}</strong>.</p>
-                            <blockquote style="background: #f5f5f5; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">
+                        <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
+                            <h2 style="color: #2563eb;">New Live Chat Message</h2>
+                            <p>You received a live chat message on <strong>${chatbot.name}</strong> from <strong>${visitorId || 'Visitor'}</strong> while your dashboard was closed.</p>
+                            <blockquote style="background: #f8fafc; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0; font-size: 15px; color: #1e293b;">
                                 ${message}
                             </blockquote>
-                            <p style="color: #666; font-size: 14px;">
-                                You are receiving this because you are currently offline or inactive on the dashboard.
+                            <p style="color: #64748b; font-size: 13px;">
+                                Log in to your dashboard to view and reply to the visitor in real-time.
                             </p>
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/conversations" style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                                View Conversation
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/conversations/${chatbotId}" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                                Open Conversation
                             </a>
                         </div>
                     `;
 
                     await sendEmail(emails, subject, html);
                 }
+            } else {
+                console.log(`[LIVE-CHAT] Dashboard is active/open for owner ${chatbot.userId}. Skipping offline email notification.`);
             }
         } catch (emailError) {
             console.error('Failed to send notification email:', emailError);

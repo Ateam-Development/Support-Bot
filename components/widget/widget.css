@@ -89,6 +89,7 @@
 .widget-chat-window {
     width: 380px;
     height: 650px;
+    min-height: 500px;
     max-height: calc(100vh - 120px);
     background: var(--w-bg);
     border-radius: var(--w-radius);
@@ -187,8 +188,11 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* This is key: keeps children inside */
     background: var(--w-bg);
     position: relative;
+    min-height: 0;
+    /* Important for nested flex scroll */
 }
 
 /* --- Messages --- */
@@ -196,11 +200,14 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 24px 20px;
+    padding: 24px 20px 24px 20px;
+    /* Reduced bottom padding as we don't need overlap protection anymore */
     display: flex;
     flex-direction: column;
     gap: 20px;
-    scroll-behavior: smooth;
+    scroll-behavior: auto !important;
+    min-height: 0;
+    /* Crucial for allowing this to shrink and scroll */
 }
 
 .widget-messages::-webkit-scrollbar {
@@ -219,8 +226,8 @@
 .widget-message {
     display: flex;
     gap: 12px;
-    align-items: flex-end;
-    max-width: 85%;
+    align-items: flex-start;
+    max-width: 90%;
     animation: slideUpFade 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
 }
 
@@ -260,12 +267,14 @@
 }
 
 .widget-message-bubble {
-    padding: 12px 18px;
-    border-radius: 20px;
-    font-size: 14px;
-    line-height: 1.5;
+    padding: 14px 20px;
+    border-radius: 18px;
+    font-size: 15px;
+    line-height: 1.6;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
     position: relative;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .widget-message-bubble.assistant {
@@ -285,7 +294,9 @@
     margin: 0 0 8px 0;
 }
 
-.markdown-content p:last-child {
+.markdown-content p:last-child,
+.markdown-content ul:last-child,
+.markdown-content ol:last-child {
     margin-bottom: 0;
 }
 
@@ -510,12 +521,76 @@
 
 /* --- Input Area --- */
 .widget-input-container {
-    padding: 16px 20px 20px 20px;
+    padding: 16px 20px;
+    /* Removed extra bottom padding as it's handled by container limits */
     background: var(--w-bg-sec);
     border-top: 1px solid var(--w-border);
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex-shrink: 0;
+    /* CRITICAL: Prevent input area from shrinking when messages fill up */
+    z-index: 10;
+    /* Ensure it stays above messages visually if they bleed */
+}
+
+/* --- Persistent Section Chips Bar --- */
+.widget-chips-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.widget-chips-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--w-text-sec);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.widget-chips-scroll {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+    width: 100%;
+}
+
+.widget-chips-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.widget-chip-pill {
+    padding: 4px 10px;
+    border-radius: 14px;
+    background: var(--w-input-bg);
+    border: 1px solid var(--w-border);
+    color: var(--w-text);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.widget-chip-pill:hover {
+    background: var(--w-hover);
+    transform: translateY(-1px);
+}
+
+.widget-chip-pill.active {
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .widget-input-section-badge {

@@ -27,55 +27,64 @@ export default function NotificationListener() {
             const unsub = subscribeToConversations(chatbot.id, (conversations) => {
                 const prevConvs = previousConversationsRef.current[chatbot.id] || [];
 
-                // Check for new unread messages
+                // Check for new unread messages in LIVE conversations ONLY
                 conversations.forEach(conv => {
                     // Skip if currently viewing this conversation
-                    if (pathname.includes(`/conversations`) && window.location.href.includes(conv.id)) {
+                    if (pathname.includes(`/conversations`) && (window.location.href.includes(conv.id) || pathname.includes(conv.id))) {
                         return;
                     }
 
                     const prevConv = prevConvs.find(c => c.id === conv.id);
 
-                    // Condition 1: New conversation created by user
-                    const isNew = !prevConv && conv.unreadCount > 0 && conv.lastMessageType !== 'ai';
+                    // Check if this conversation or its latest message is LIVE (Not AI)
+                    const lastMsg = Array.isArray(conv.messages) && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
+                    const isLive = conv.lastMessageType === 'live' || lastMsg?.type === 'live';
 
-                    // Condition 2: Existing conversation has new unread message
-                    const hasNewMessage = prevConv &&
-                        conv.unreadCount > prevConv.unreadCount &&
-                        conv.lastMessageType !== 'ai';
+                    // Strict filter: ONLY LIVE conversations trigger popup toasts
+                    if (!isLive) return;
+
+                    // Condition 1: New live conversation created with unread messages
+                    const isNew = !prevConv && conv.unreadCount > 0;
+
+                    // Condition 2: Existing live conversation has newly received unread message
+                    const hasNewMessage = prevConv && conv.unreadCount > (prevConv.unreadCount || 0);
 
                     if (isNew || hasNewMessage) {
-                        // Play sound (optional)
-                        // const audio = new Audio('/notification.mp3');
-                        // audio.play().catch(e => console.log('Audio play failed', e));
+                        const messageText = lastMsg?.content || lastMsg?.text || conv.lastMessage || 'New live chat request';
 
-                        // Show toast
+                        // Show Live Chat Toast
                         toast(
-                            <div className="flex flex-col gap-1 w-full" onClick={() => {
-                                router.push(`/conversations`);
-                                // Ideally we would navigate to the specific conversation but the page architecture
-                                // might need adjustment to handle URL params for selection.
-                                // For now, taking them to the inbox is good.
-                            }}>
-                                <div className="flex items-center gap-2 font-semibold">
-                                    <MessageCircle className="w-4 h-4 text-blue-500" />
-                                    <span>New Message</span>
+                            <div
+                                className="flex flex-col gap-1 w-full"
+                                onClick={() => {
+                                    router.push(`/conversations/${chatbot.id}`);
+                                }}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 font-semibold text-emerald-400">
+                                        <MessageCircle className="w-4 h-4 text-emerald-400 animate-pulse" />
+                                        <span>Live Chat Request</span>
+                                    </div>
+                                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Live Agent
+                                    </span>
                                 </div>
-                                <div className="text-sm font-medium truncate">
-                                    {conv.visitorId || 'Visitor'}: {conv.lastMessage || 'Sent a message'}
+                                <div className="text-sm font-medium text-white truncate">
+                                    {conv.visitorId || 'Visitor'}: "{messageText}"
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                    {chatbot.name} • Just now
+                                <div className="text-xs text-gray-400">
+                                    {chatbot.name} • Click to open conversation
                                 </div>
                             </div>,
                             {
-                                duration: 5000,
+                                duration: 7000,
                                 position: 'top-right',
                                 style: {
                                     cursor: 'pointer',
-                                    background: '#1a1a1a',
-                                    border: '1px solid #333',
-                                    color: 'white'
+                                    background: '#0d131a',
+                                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                                    color: 'white',
+                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
                                 }
                             }
                         );
