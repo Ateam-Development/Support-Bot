@@ -7,7 +7,7 @@ import NotificationListener from '@/components/NotificationListener';
 
 export default function DashboardLayout({ children }) {
     return (
-        <div className="flex w-full h-full">
+        <div className="flex w-full h-screen overflow-hidden">
             <ChatbotProvider>
                 <NotificationListener />
                 <Toaster richColors position="top-right" />

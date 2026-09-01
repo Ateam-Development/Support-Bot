@@ -48,13 +48,13 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-950">
+        <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-950 p-4 relative">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-purple-600/10 rounded-full blur-[120px]"></div>
                 <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px]"></div>
             </div>
 
-            <div className="relative z-10 w-full max-w-md p-8">
+            <div className="relative z-10 w-full max-w-md mx-auto">
                 <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 shadow-2xl">
                     <h1 className="text-3xl font-bold text-white mb-2 text-center">
                         {isSignup ? 'Create Account' : 'Welcome Back'}

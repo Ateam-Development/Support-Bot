@@ -62,7 +62,7 @@ export default function RootLayout({ children }) {
       </head>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen flex overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen w-full bg-black text-white`}
       >
         <AuthProvider>
           {children}
