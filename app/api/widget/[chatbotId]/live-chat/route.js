@@ -1,6 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import { getChatbotById, createConversation, addMessageToConversation, getConversationById, getConversationByVisitorId, updateConversation } from '@/lib/db';
-import { addRealtimeMessage } from '@/lib/firebase-realtime';
+import { addRealtimeMessage } from '@/lib/realtime-server';
 import { sendEmail } from '@/lib/email';
 import { getNotificationRecipients, isOwnerOnDashboard, appUrl, escapeHtml } from '@/lib/notify';
 import { captureLeadFromMessage } from '@/lib/leads';
@@ -18,6 +18,50 @@ async function resolveConversation(chatbotId, conversationId, visitorId) {
         if (conversation) return conversation;
     }
     return createConversation(chatbotId, null, visitorId);
+}
+
+/**
+ * GET /api/widget/:chatbotId/live-chat?conversationId=...&visitorId=...
+ * Live chat messages for the widget (polled; visitors can't read Realtime DB directly)
+ */
+export async function GET(request, { params }) {
+    try {
+        const { chatbotId } = await params;
+        const { searchParams } = new URL(request.url);
+        const conversationId = searchParams.get('conversationId');
+        const visitorId = searchParams.get('visitorId');
+
+        if (!conversationId) {
+            return NextResponse.json({ success: true, data: { messages: [] } });
+        }
+
+        const conversation = await getConversationById(conversationId);
+        const ownsConversation = conversation &&
+            conversation.chatbotId === chatbotId &&
+            (!String(conversation.visitorId || '').startsWith('visitor_') || conversation.visitorId === visitorId);
+
+        if (!ownsConversation) {
+            return NextResponse.json({ success: false, error: 'NotFound', message: 'Conversation not found' }, { status: 404 });
+        }
+
+        const messages = (conversation.messages || [])
+            .filter(m => m.type === 'live')
+            .map(m => ({
+                id: `${m.timestamp}-${m.role}`,
+                role: m.role,
+                content: m.content || m.text || '',
+                timestamp: m.timestamp
+            }))
+            .sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
+
+        return NextResponse.json(
+            { success: true, data: { messages } },
+            { headers: { 'Cache-Control': 'no-store' } }
+        );
+    } catch (error) {
+        console.error('Live chat fetch error:', error);
+        return NextResponse.json({ success: false, error: 'InternalError', message: 'Failed to load messages' }, { status: 500 });
+    }
 }
 
 async function notifyOwnerIfAway(chatbot, conversation, message, visitorId) {

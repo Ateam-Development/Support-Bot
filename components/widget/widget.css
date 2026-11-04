@@ -894,3 +894,10 @@
     object-fit: cover;
     border-radius: inherit;
 }
+
+.widget-message-failed {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #ef4444;
+    text-align: right;
+}

@@ -4,8 +4,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Send, X, MessageCircle, Home, MessageSquare, Headset, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { subscribeToMessages } from '@/lib/firebase-realtime';
 import './widget.css';
+
+const LIVE_WELCOME = {
+    id: 'live-welcome',
+    role: 'assistant',
+    content: 'Hello! A support agent will be with you shortly. How can we help you?'
+};
 
 const ChatWidget = ({ chatbotId }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +30,8 @@ const ChatWidget = ({ chatbotId }) => {
     const [liveInput, setLiveInput] = useState('');
     const [isLiveTyping, setIsLiveTyping] = useState(false);
     const [liveConversationId, setLiveConversationId] = useState(null);
+    const [pendingLive, setPendingLive] = useState([]); // sent, not yet confirmed by server
+    const [liveRefresh, setLiveRefresh] = useState(0);
     const liveMessagesEndRef = useRef(null);
 
     // Mobile Detection
@@ -195,39 +202,40 @@ const ChatWidget = ({ chatbotId }) => {
         }
     };
 
-    // Initialize Live Chat Welcome Message
+    // Live chat messages come from the server by polling: visitors aren't signed in,
+    // so Realtime Database rules block them from reading it directly.
     useEffect(() => {
-        if (config && liveMessages.length === 0 && !liveConversationId) {
-            setLiveMessages([
-                {
-                    id: 'live-initial-welcome',
-                    role: 'assistant',
-                    content: "Hello! How can we help you today?",
-                    type: 'live'
-                }
-            ]);
-        }
-    }, [config, liveConversationId]);
+        if (!isOpen || activeTab !== 'chat' || !liveConversationId) return;
+        let stopped = false;
 
-    // Real-time listener for live chat messages
-    useEffect(() => {
-        if (!liveConversationId) return;
-        const unsubscribe = subscribeToMessages(liveConversationId, (messages) => {
-            const liveOnly = messages.filter(msg => msg.type === 'live');
-            const welcomeMsg = {
-                id: 'live-welcome',
-                role: 'assistant',
-                content: "Hello! A support agent will be with you shortly. How can we help you?",
-                type: 'live'
-            };
-            setLiveMessages([welcomeMsg, ...liveOnly]);
-        });
-        return () => unsubscribe();
-    }, [liveConversationId]);
+        const load = async () => {
+            try {
+                const res = await fetch(
+                    `/api/widget/${chatbotId}/live-chat?conversationId=${encodeURIComponent(liveConversationId)}&visitorId=${encodeURIComponent(visitorId)}`,
+                    { cache: 'no-store' }
+                );
+                const data = await res.json();
+                if (stopped || !data.success) return;
+                const serverMessages = data.data.messages;
+                setLiveMessages(serverMessages);
+                // Drop optimistic copies once the server has them
+                setPendingLive(prev => prev.filter(p => p.failed || !serverMessages.some(m => m.role === 'user' && m.content === p.content)));
+            } catch (error) {
+                console.error('Live chat poll error:', error);
+            }
+        };
+
+        load();
+        const timer = setInterval(load, 3000);
+        return () => {
+            stopped = true;
+            clearInterval(timer);
+        };
+    }, [isOpen, activeTab, liveConversationId, chatbotId, visitorId, liveRefresh]);
 
     useEffect(() => {
         scrollToBottom();
-    }, [aiMessages, liveMessages, isAiTyping, isLiveTyping, activeTab, activeSection]);
+    }, [aiMessages, liveMessages, pendingLive, isAiTyping, isLiveTyping, activeTab, activeSection]);
 
     // Notify parent window about resize needs
     useEffect(() => {
@@ -401,6 +409,10 @@ const ChatWidget = ({ chatbotId }) => {
         const currentInput = liveInput;
         setLiveInput('');
 
+        // Show the message immediately
+        const pendingId = `pending-${Date.now()}`;
+        setPendingLive(prev => [...prev, { id: pendingId, role: 'user', content: currentInput }]);
+
         try {
             const res = await fetch(`/api/widget/${chatbotId}/live-chat`, {
                 method: 'POST',
@@ -417,9 +429,13 @@ const ChatWidget = ({ chatbotId }) => {
             if (data.success && data.data?.conversationId) {
                 setLiveConversationId(data.data.conversationId);
                 localStorage.setItem(`oneminute_conv_${chatbotId}`, data.data.conversationId);
+                setLiveRefresh(n => n + 1); // fetch right away instead of waiting for the next poll
+            } else {
+                throw new Error(data.message || 'Send failed');
             }
         } catch (error) {
             console.error('Live chat error:', error);
+            setPendingLive(prev => prev.map(p => p.id === pendingId ? { ...p, failed: true } : p));
         }
     };
 
@@ -710,7 +726,7 @@ const ChatWidget = ({ chatbotId }) => {
                                     style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
                                 >
                                     <div className="widget-messages">
-                                        {liveMessages.map((msg) => (
+                                        {[LIVE_WELCOME, ...liveMessages, ...pendingLive].map((msg) => (
                                             <div key={msg.id} className={`widget-message ${msg.role}`}>
                                                 {msg.role === 'assistant' && (
                                                     <div className="widget-message-avatar" style={{ backgroundColor: '#10b981' }}> {/* Green for live agent */}
@@ -718,9 +734,10 @@ const ChatWidget = ({ chatbotId }) => {
                                                     </div>
                                                 )}
                                                 <div className="widget-message-content">
-                                                    <div className={`widget-message-bubble ${msg.role}`} style={msg.role === 'user' ? { backgroundColor: primaryColor } : {}}>
+                                                    <div className={`widget-message-bubble ${msg.role}`} style={msg.role === 'user' ? { backgroundColor: primaryColor, opacity: msg.failed ? 0.5 : 1 } : {}}>
                                                         {msg.content}
                                                     </div>
+                                                    {msg.failed && <div className="widget-message-failed">Not sent. Check your connection and try again.</div>}
                                                 </div>
                                             </div>
                                         ))}

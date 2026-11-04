@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { getConversationById, getChatbotById, sendLiveMessage } from '@/lib/db';
-import { addRealtimeMessage } from '@/lib/firebase-realtime';
+import { addRealtimeMessage } from '@/lib/realtime-server';
 import { handleApiError } from '@/lib/api-utils';
 
 /**

@@ -10,7 +10,7 @@ import {
     getFlow,
     updateConversation
 } from '@/lib/db';
-import { addRealtimeMessage } from '@/lib/firebase-realtime';
+import { addRealtimeMessage } from '@/lib/realtime-server';
 import { FlowEngine } from '@/lib/flow-engine';
 import { retrieveContext } from '@/lib/rag';
 import { generateMultiProviderCompletion } from '@/lib/llm';
