@@ -25,7 +25,7 @@ export default function ChatbotPage() {
     const [welcomeMessage, setWelcomeMessage] = useState('');
     const [theme, setTheme] = useState('black');
     const [provider, setProvider] = useState('gemini'); // 'gemini' | 'openai' | 'mistral'
-    const [modelName, setModelName] = useState('gemini-2.5-flash');
+    const [modelName, setModelName] = useState('gemini-3.8-flash');
     const [openaiApiKey, setOpenaiApiKey] = useState('');
     const [geminiApiKey, setGeminiApiKey] = useState('');
     const [mistralApiKey, setMistralApiKey] = useState('');
@@ -44,25 +44,60 @@ export default function ChatbotPage() {
     const modelOptions = {
         gemini: [
             {
+                id: 'gemini-3.8-flash',
+                name: 'Gemini 3.8 Flash',
+                tag: 'NEW · RECOMMENDED',
+                isFree: null,
+                desc: 'Most intelligent Flash model, fast and smart'
+            },
+            {
+                id: 'gemini-4-argon',
+                name: 'Gemini 4 Argon',
+                tag: 'FLAGSHIP',
+                isFree: false,
+                desc: 'Top reasoning model, 1M context (higher cost)'
+            },
+            {
+                id: 'gemini-3.1-pro-preview',
+                name: 'Gemini 3.1 Pro (Preview)',
+                tag: 'PREVIEW',
+                isFree: false,
+                desc: 'Pro-tier reasoning, preview release'
+            },
+            {
+                id: 'gemini-3.6-flash',
+                name: 'Gemini 3.6 Flash',
+                tag: 'STABLE',
+                isFree: null,
+                desc: 'Previous-generation Flash, stable'
+            },
+            {
+                id: 'gemini-3-flash-preview',
+                name: 'Gemini 3 Flash (Preview)',
+                tag: 'PREVIEW',
+                isFree: null,
+                desc: 'Gemini 3 Flash preview release'
+            },
+            {
+                id: 'gemini-3.5-flash-lite',
+                name: 'Gemini 3.5 Flash-Lite',
+                tag: 'LOWEST COST',
+                isFree: null,
+                desc: 'Fastest, most cost-effective'
+            },
+            {
+                id: 'gemini-3.1-flash-lite',
+                name: 'Gemini 3.1 Flash-Lite',
+                tag: 'LOW COST',
+                isFree: null,
+                desc: 'Cost-efficient, stable'
+            },
+            {
                 id: 'gemini-2.5-flash',
-                name: 'Gemini 2.5 Flash',
-                tag: 'FREE TIER',
-                isFree: true,
-                desc: 'Ultra-fast & smart (Free on Google AI Studio keys)'
-            },
-            {
-                id: 'gemini-1.5-flash',
-                name: 'Gemini 1.5 Flash',
-                tag: 'FREE TIER',
-                isFree: true,
-                desc: 'Fast multimodal response (Free on Google AI Studio)'
-            },
-            {
-                id: 'gemini-1.5-pro',
-                name: 'Gemini 1.5 Pro',
-                tag: 'FREE TIER',
-                isFree: true,
-                desc: 'Deep reasoning (Free with rate limits on Google AI Studio)'
+                name: 'Gemini 2.5 Flash (Deprecated)',
+                tag: 'DEPRECATED',
+                isFree: null,
+                desc: 'Routes to 3.5 Flash-Lite from 1 Dec 2026; existing keys only'
             }
         ],
         mistral: [
@@ -141,7 +176,7 @@ export default function ChatbotPage() {
                 const currentProvider = (bot.provider || bot.model || 'gemini').toLowerCase();
                 const resolvedProvider = currentProvider.startsWith('gpt') || currentProvider === 'openai' ? 'openai' : (currentProvider.startsWith('mistral') ? 'mistral' : 'gemini');
                 setProvider(resolvedProvider);
-                setModelName(bot.modelName || (resolvedProvider === 'openai' ? 'gpt-4o-mini' : (resolvedProvider === 'mistral' ? 'mistral-large-latest' : 'gemini-2.5-flash')));
+                setModelName(bot.modelName || (resolvedProvider === 'openai' ? 'gpt-4o-mini' : (resolvedProvider === 'mistral' ? 'mistral-large-latest' : 'gemini-3.8-flash')));
 
                 setOpenaiApiKey(bot.openaiApiKey || '');
                 setGeminiApiKey(bot.geminiApiKey || '');
@@ -163,7 +198,7 @@ export default function ChatbotPage() {
         setProvider(newProvider);
         if (newProvider === 'openai') setModelName('gpt-4o-mini');
         else if (newProvider === 'mistral') setModelName('mistral-large-latest');
-        else setModelName('gemini-2.5-flash');
+        else setModelName('gemini-3.8-flash');
     };
 
     const saveChanges = async () => {
@@ -364,17 +399,21 @@ export default function ChatbotPage() {
 
                                 return (
                                     <div className={`mt-3 p-3.5 rounded-xl border text-xs flex flex-col gap-1.5 transition-all ${
-                                        activeModel.isFree
+                                        activeModel.isFree === null
+                                            ? 'bg-blue-950/30 border-blue-500/30 text-blue-300'
+                                            : activeModel.isFree
                                             ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300'
                                             : 'bg-amber-950/30 border-amber-500/30 text-amber-300'
                                     }`}>
                                         <div className="flex items-center justify-between font-semibold">
                                             <span className="flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${activeModel.isFree ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                                                <span className={`w-2 h-2 rounded-full ${activeModel.isFree === null ? 'bg-blue-400' : activeModel.isFree ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
                                                 {activeModel.name}
                                             </span>
                                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                                                activeModel.isFree
+                                                activeModel.isFree === null
+                                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                                    : activeModel.isFree
                                                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                                                     : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                                             }`}>
@@ -382,7 +421,9 @@ export default function ChatbotPage() {
                                             </span>
                                         </div>
                                         <p className="text-[11px] leading-relaxed text-gray-400">
-                                            {activeModel.isFree
+                                            {activeModel.isFree === null
+                                                ? 'ℹ️ Usage-based pricing. Check Google AI Studio for free-tier limits on your key.'
+                                                : activeModel.isFree
                                                 ? '✅ Free Tier Compatible: Operates on standard free-tier API keys without requiring a paid billing plan.'
                                                 : '⚠️ Paid Plan / Credits Required: Requires a funded credit balance or paid billing subscription on your provider account.'
                                             }
