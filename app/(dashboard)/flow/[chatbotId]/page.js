@@ -13,7 +13,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useParams } from 'next/navigation';
-import { Save, AlertCircle, CheckCircle, Plus, Layout, Type, MousePointerClick, MessageSquare, StopCircle, Play, Trash2 } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, Layout, Type, MousePointerClick, MessageSquare, StopCircle, Play, Trash2, CalendarDays } from 'lucide-react';
 import CustomNode from '@/components/flow/CustomNode';
 import CustomEdge from '@/components/flow/CustomEdge';
 
@@ -23,6 +23,26 @@ const nodeTypes = {
 
 const edgeTypes = {
     custom: CustomEdge,
+};
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const DEFAULT_BOOKING = {
+    days: [1, 2, 3, 4, 5],
+    startTime: '09:00',
+    endTime: '17:00',
+    slotMinutes: 30,
+    daysAhead: 7,
+    timezone: 'Asia/Kolkata'
+};
+
+const NODE_LABELS = {
+    question: 'Question',
+    email: 'Email Input',
+    booking: 'Booking',
+    end: 'End Flow',
+    start: 'Start',
+    message: 'Message'
 };
 
 const initialNodes = [
@@ -161,10 +181,11 @@ function FlowEditor() {
                 type: 'custom',
                 position: position,
                 data: {
-                    label: node.type === 'question' ? 'Question' : (node.type === 'email' ? 'Email Input' : node.type === 'end' ? 'End Flow' : node.type === 'start' ? 'Start' : 'Message'),
-                    type: node.type, // 'question' | 'message' | 'email'
+                    label: NODE_LABELS[node.type] || 'Message',
+                    type: node.type, // 'question' | 'message' | 'email' | 'booking'
                     text: node.text,
-                    options: node.options || []
+                    options: node.options || [],
+                    ...(node.type === 'booking' ? { booking: { ...DEFAULT_BOOKING, ...node.booking } } : {})
                 }
             });
 
@@ -242,10 +263,11 @@ function FlowEditor() {
                 type: 'custom',
                 position,
                 data: {
-                    label: type === 'question' ? 'New Question' : (type === 'email' ? 'Email Input' : type === 'end' ? 'End Flow' : type === 'start' ? 'Start' : 'New Message'),
+                    label: type === 'question' ? 'New Question' : type === 'message' ? 'New Message' : NODE_LABELS[type],
                     type: type,
-                    text: type === 'question' ? 'Ask a question...' : (type === 'email' ? 'Please enter your email address:' : type === 'end' ? 'Thank you!' : type === 'start' ? 'Welcome! How can I help?' : 'Send a message...'),
-                    options: type === 'question' ? ['Yes', 'No'] : []
+                    text: type === 'question' ? 'Ask a question...' : (type === 'email' ? 'Please enter your email address:' : type === 'booking' ? 'Pick a day and time that works for you:' : type === 'end' ? 'Thank you!' : type === 'start' ? 'Welcome! How can I help?' : 'Send a message...'),
+                    options: type === 'question' ? ['Yes', 'No'] : [],
+                    ...(type === 'booking' ? { booking: { ...DEFAULT_BOOKING } } : {})
                 },
             };
 
@@ -313,6 +335,12 @@ function FlowEditor() {
                 // Email node -> Single 'next', plus validation
                 nodeData.validation = 'email';
                 nodeData.saveAs = 'email';
+                if (nodeEdges.length > 0) {
+                    nodeData.next = nodeEdges[0].target;
+                }
+            } else if (nodeData.type === 'booking') {
+                // Booking node -> slot config, single 'next' after the visitor books
+                nodeData.booking = { ...DEFAULT_BOOKING, ...node.data.booking };
                 if (nodeEdges.length > 0) {
                     nodeData.next = nodeEdges[0].target;
                 }
@@ -432,6 +460,18 @@ function FlowEditor() {
                     </div>
 
                     <div
+                        className="p-3 bg-cyan-600/10 border border-cyan-600/30 rounded-lg cursor-grab hover:bg-cyan-600/20 transition-colors flex items-center gap-3"
+                        onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'booking')}
+                        draggable
+                    >
+                        <CalendarDays size={20} className="text-cyan-400" />
+                        <div>
+                            <div className="text-sm font-medium text-white">Booking</div>
+                            <div className="text-xs text-gray-400">Let users pick a slot</div>
+                        </div>
+                    </div>
+
+                    <div
                         className="p-3 bg-red-600/10 border border-red-600/30 rounded-lg cursor-grab hover:bg-red-600/20 transition-colors flex items-center gap-3"
                         onDragStart={(event) => event.dataTransfer.setData('application/reactflow', 'end')}
                         draggable
@@ -448,7 +488,7 @@ function FlowEditor() {
                 {/* Properties Panel (Bottom Left or Replacing Toolbar when selected?) */}
                 {/* Let's keep it simple: Toolbar always visible, Properties below if selected */}
                 {selectedNode && (
-                    <div className="p-4 border-t border-white/5 bg-[#111]">
+                    <div className="p-4 border-t border-white/5 bg-[#111] max-h-[55vh] overflow-y-auto custom-scrollbar">
                         <div className="mb-2 text-xs font-bold text-gray-500 uppercase">Properties</div>
                         <div className="space-y-3">
                             <div>
@@ -497,6 +537,13 @@ function FlowEditor() {
                                         </button>
                                     </div>
                                 </div>
+                            )}
+
+                            {selectedNode.data.type === 'booking' && (
+                                <BookingSettings
+                                    value={{ ...DEFAULT_BOOKING, ...selectedNode.data.booking }}
+                                    onChange={(booking) => updateNodeData(selectedNode.id, { booking })}
+                                />
                             )}
 
                             <button
@@ -557,6 +604,67 @@ function FlowEditor() {
                 >       <Background color="#222" gap={16} />
                     <Controls className="bg-[#1a1a1a] border border-white/10 fill-white text-white" />
                 </ReactFlow>
+            </div>
+        </div>
+    );
+}
+
+function BookingSettings({ value, onChange }) {
+    const set = (patch) => onChange({ ...value, ...patch });
+    const toggleDay = (day) => {
+        const days = value.days.includes(day) ? value.days.filter(d => d !== day) : [...value.days, day].sort();
+        set({ days });
+    };
+    const inputClass = 'w-full bg-[#222] border border-white/10 rounded p-2 text-sm text-white';
+
+    return (
+        <div className="space-y-3">
+            <div>
+                <label className="text-xs text-gray-400 mb-1 block">Available days</label>
+                <div className="grid grid-cols-7 gap-1">
+                    {WEEKDAYS.map((name, day) => (
+                        <button
+                            key={name}
+                            type="button"
+                            onClick={() => toggleDay(day)}
+                            className={`py-1.5 rounded text-[10px] font-medium border transition-colors ${value.days.includes(day)
+                                ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
+                                : 'bg-[#222] border-white/10 text-gray-500 hover:text-white'}`}
+                        >
+                            {name.slice(0, 2)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <label className="text-xs text-gray-400 mb-1 block">From</label>
+                    <input type="time" className={inputClass} value={value.startTime} onChange={(e) => set({ startTime: e.target.value })} />
+                </div>
+                <div>
+                    <label className="text-xs text-gray-400 mb-1 block">To</label>
+                    <input type="time" className={inputClass} value={value.endTime} onChange={(e) => set({ endTime: e.target.value })} />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Slot length</label>
+                    <select className={inputClass} value={value.slotMinutes} onChange={(e) => set({ slotMinutes: Number(e.target.value) })}>
+                        {[15, 20, 30, 45, 60, 90, 120].map(m => <option key={m} value={m}>{m} min</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Days ahead</label>
+                    <input type="number" min={1} max={60} className={inputClass} value={value.daysAhead} onChange={(e) => set({ daysAhead: Number(e.target.value) })} />
+                </div>
+            </div>
+            <div>
+                <label className="text-xs text-gray-400 mb-1 block">Timezone</label>
+                <select className={inputClass} value={value.timezone} onChange={(e) => set({ timezone: e.target.value })}>
+                    {['Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Europe/London', 'Europe/Berlin', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Australia/Sydney', 'UTC'].map(tz => (
+                        <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                </select>
             </div>
         </div>
     );

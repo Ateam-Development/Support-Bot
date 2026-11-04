@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { MessageCircle, HelpCircle, ArrowRight, Mail, StopCircle, Play } from 'lucide-react';
+import { MessageCircle, HelpCircle, ArrowRight, Mail, StopCircle, Play, CalendarDays } from 'lucide-react';
 
 export default memo(({ data, isConnectable }) => {
     return (
@@ -9,6 +9,7 @@ export default memo(({ data, isConnectable }) => {
             <div className={`p-3 border-b flex items-center gap-2 ${data.type === 'question' ? 'bg-blue-600/20 border-blue-600/30' :
                 data.type === 'message' ? 'bg-purple-600/20 border-purple-600/30' :
                     data.type === 'email' ? 'bg-orange-600/20 border-orange-600/30' :
+                    data.type === 'booking' ? 'bg-cyan-600/20 border-cyan-600/30' :
                         data.type === 'end' ? 'bg-red-600/20 border-red-600/30' :
                             data.type === 'start' ? 'bg-green-600/20 border-green-600/30' :
                                 'bg-gray-600/20 border-gray-600/30'
@@ -16,11 +17,12 @@ export default memo(({ data, isConnectable }) => {
                 {data.type === 'question' && <HelpCircle size={16} className="text-blue-400" />}
                 {data.type === 'message' && <MessageCircle size={16} className="text-purple-400" />}
                 {data.type === 'email' && <Mail size={16} className="text-orange-400" />}
+                {data.type === 'booking' && <CalendarDays size={16} className="text-cyan-400" />}
                 {data.type === 'end' && <StopCircle size={16} className="text-red-400" />}
                 {data.type === 'start' && <Play size={16} className="text-green-400" />}
                 {!data.type && <div className="w-4 h-4 rounded-full bg-green-500" />}
                 <span className="text-sm font-semibold text-gray-200 uppercase tracking-wider">
-                    {data.label || (data.type === 'question' ? 'Question' : data.type === 'email' ? 'Email' : data.type === 'end' ? 'End Flow' : data.type === 'start' ? 'Start' : 'Message')}
+                    {data.label || (data.type === 'question' ? 'Question' : data.type === 'email' ? 'Email' : data.type === 'booking' ? 'Booking' : data.type === 'end' ? 'End Flow' : data.type === 'start' ? 'Start' : 'Message')}
                 </span>
             </div>
 
@@ -29,6 +31,13 @@ export default memo(({ data, isConnectable }) => {
                 <div className="text-sm text-gray-300 mb-3 font-medium">
                     {data.text || "Enter text..."}
                 </div>
+
+                {data.type === 'booking' && data.booking && (
+                    <div className="mb-3 text-xs text-cyan-300/80 bg-cyan-500/5 border border-cyan-500/20 rounded-lg px-2.5 py-1.5">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].filter((_, d) => data.booking.days?.includes(d)).join(' ')}
+                        {' · '}{data.booking.startTime}–{data.booking.endTime}{' · '}{data.booking.slotMinutes} min
+                    </div>
+                )}
 
                 {/* Input Handle (Entry) */}
                 {data.type !== 'start' && (

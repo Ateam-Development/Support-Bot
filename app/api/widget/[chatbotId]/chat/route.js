@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import {
     getChatbotById,
     getSectionsByChatbotId,
-    getKnowledgeByChatbotId,
     createConversation,
     addMessageToConversation,
+    addMessagesToConversation,
     getConversationById,
     getConversationByVisitorId,
     getFlow,
@@ -12,9 +12,10 @@ import {
 } from '@/lib/db';
 import { addRealtimeMessage } from '@/lib/firebase-realtime';
 import { FlowEngine } from '@/lib/flow-engine';
-import { admin } from '@/lib/firebase-admin';
 import { retrieveContext } from '@/lib/rag';
 import { generateMultiProviderCompletion } from '@/lib/llm';
+import { upsertLead, captureLeadFromMessage } from '@/lib/leads';
+import { getAvailableSlots, createBooking, sendBookingEmails, formatSlotLabel } from '@/lib/bookings';
 
 export async function OPTIONS() {
     return NextResponse.json({}, {
@@ -24,6 +25,39 @@ export async function OPTIONS() {
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
     });
+}
+
+async function resolveConversation(chatbotId, conversationId, visitorId) {
+    if (conversationId) {
+        const conversation = await getConversationById(conversationId);
+        if (conversation && conversation.chatbotId === chatbotId) return conversation;
+    }
+    if (visitorId) {
+        const conversation = await getConversationByVisitorId(chatbotId, visitorId);
+        if (conversation) return conversation;
+    }
+    return createConversation(chatbotId, null, visitorId);
+}
+
+async function syncRealtime(conversationId, message) {
+    try {
+        await addRealtimeMessage(conversationId, message);
+    } catch (e) {
+        console.error('Realtime DB sync failed:', e);
+    }
+}
+
+/** Attach live slot lists to booking messages so the widget can render the picker */
+async function withSlots(chatbotId, messages) {
+    return Promise.all(messages.map(async (msg) => {
+        if (msg.type !== 'booking') return msg;
+        try {
+            return { ...msg, slots: await getAvailableSlots(chatbotId, msg.booking) };
+        } catch (err) {
+            console.error('[BOOKING] Failed to load slots:', err);
+            return { ...msg, slots: [] };
+        }
+    }));
 }
 
 /**
@@ -43,41 +77,18 @@ export async function POST(request, { params }) {
             );
         }
 
-        // Get chatbot configuration
-        const chatbot = await getChatbotById(chatbotId);
+        // Independent lookups run in parallel to cut latency
+        const [chatbot, flowData, conversation] = await Promise.all([
+            getChatbotById(chatbotId),
+            getFlow(chatbotId),
+            resolveConversation(chatbotId, conversationId, visitorId)
+        ]);
 
         if (!chatbot) {
             return NextResponse.json(
                 { success: false, error: 'NotFound', message: 'Chatbot not found' },
                 { status: 404 }
             );
-        }
-
-        // Get or create conversation
-        let conversation;
-        if (conversationId) {
-            conversation = await getConversationById(conversationId);
-            if (!conversation || conversation.chatbotId !== chatbotId) {
-                // Invalid conversation ID, try finding by visitorId if available
-                if (visitorId) {
-                    conversation = await getConversationByVisitorId(chatbotId, visitorId);
-                }
-
-                // If still no conversation, create new one
-                if (!conversation) {
-                    conversation = await createConversation(chatbotId, null, visitorId);
-                }
-            }
-        } else {
-            // No ID provided, try finding existing active conversation by visitorId
-            if (visitorId) {
-                conversation = await getConversationByVisitorId(chatbotId, visitorId);
-            }
-
-            // Create new if none found
-            if (!conversation) {
-                conversation = await createConversation(chatbotId, null, visitorId);
-            }
         }
 
         // Add user message to conversation ONLY if message exists
@@ -88,82 +99,44 @@ export async function POST(request, { params }) {
                 type: 'ai', // This is part of AI conversation
                 timestamp: new Date().toISOString()
             };
-            await addMessageToConversation(conversation.id, userMessage);
-
-            // Sync to Realtime DB
-            try {
-                await addRealtimeMessage(conversation.id, userMessage);
-            } catch (e) {
-                console.error('Realtime DB sync failed:', e);
-            }
+            await Promise.all([
+                addMessageToConversation(conversation.id, userMessage),
+                syncRealtime(conversation.id, userMessage)
+            ]);
         }
 
         // =================================================================================
         // FLOW ENGINE LOGIC
         // =================================================================================
 
-        // Check for active flow
-        const flowData = await getFlow(chatbotId);
-        console.log(`Chat Route: Flow data loaded. Enabled: ${flowData?.enabled}, StartNodeId: ${flowData?.startNodeId}, NodeCount: ${Object.keys(flowData?.nodes || {}).length}`);
-        console.log(`Chat Route: Node IDs in DB: ${Object.keys(flowData?.nodes || {}).join(', ')}`);
         let flowResponse = null;
+        let flowComplete = false;
+        let flowHandledMessage = false;
 
-        // If flow is enabled (or exists), and we are either IN a flow or STARTING a flow
-        // For now, always check if there is a flow.
         if (flowData && flowData.enabled !== false) {
-            // Check if conversation already has flow state
             const currentFlowState = conversation.flowState || null;
 
-            // Should we start a flow? 
-            // - If no flow state, and this is the FIRST message? Or explicit trigger?
-            // - For simplicity: If there is a defined flow, we try to use it unless completed.
-
-            // Logic: Is there an active flow state?
             let shouldProcessFlow = false;
-
-            console.log(`Chat Route: Checking Flow Trigger. State: ${!!currentFlowState}, MsgCount: ${conversation.messages?.length}, Trigger: ${trigger}`);
-
             if (trigger === 'init_flow') {
                 // FORCE START (Reset flow)
                 shouldProcessFlow = true;
             } else if (currentFlowState && !currentFlowState.isComplete) {
-                // Determine if we should continue the flow
                 shouldProcessFlow = true;
             } else if (!currentFlowState && (!conversation.messages || conversation.messages.length <= 1)) {
                 // Start flow on first message
                 shouldProcessFlow = true;
             }
 
-            console.log(`Chat Route: shouldProcessFlow = ${shouldProcessFlow}`);
-
             if (shouldProcessFlow) {
                 const engine = new FlowEngine(flowData);
 
-                // If this is the start, we might not want to process user input as an ANSWER yet,
-                // but rather as a trigger.
-                // However, the standard layout is: Bot Says X -> User Says Y -> Bot Validates Y.
-                // If we have no state, we are at Start.
-                // If user just sent "Hi", we might want to Ignore that input for the flow Logic context, 
-                // OR treat "Hi" as the answer to... nothing?
-                // Let's assume:
-                // If no state: Input is ignored/consumed, and we return StartNode text.
-                // If state exists: Input is processed against Current Node.
-
-                let result;
-
                 if (!currentFlowState || trigger === 'init_flow') {
                     // INITIALIZE FLOW SEQUENCE
-                    console.log(`Flow Init: Chatbot ${chatbotId}, Flow Enabled: ${flowData.enabled}`);
-                    console.log(`Flow Data Keys: startNodeId=${flowData.startNodeId}, NodeCount=${Object.keys(flowData.nodes || {}).length}`);
-
                     const sequence = engine.getStartSequence();
-                    console.log("Flow Init Sequence Result:", sequence ? `Found ${sequence.messages.length} msgs` : "NULL");
 
                     if (sequence && sequence.messages.length > 0) {
-
-                        // Accumulate messages
-                        flowResponse = sequence.messages; // Array [{text, options}]
-
+                        flowResponse = sequence.messages;
+                        flowComplete = sequence.isComplete;
                         await updateConversation(conversation.id, {
                             flowState: {
                                 currentStepId: sequence.currentStepId,
@@ -172,64 +145,81 @@ export async function POST(request, { params }) {
                             }
                         });
                     } else {
-                        console.error("Flow Init Failed: Sequence is null or empty.");
+                        console.error('Flow Init Failed: Sequence is null or empty.');
                     }
                 } else {
                     // CONTINUE FLOW
-                    result = engine.processMessage(currentFlowState, message);
+                    flowHandledMessage = true;
+                    const currentNode = flowData.nodes?.[currentFlowState.currentStepId];
+                    const result = engine.processMessage(currentFlowState, message);
 
-                    if (result.messages && result.messages.length > 0) {
-                        flowResponse = result.messages; // Array
+                    if (result.error) {
+                        console.error('Flow error:', result.error);
+                        flowResponse = [{ text: 'Error: ' + result.error, options: [] }];
+                    } else {
+                        let messages = result.messages || [];
+                        let newData = { ...currentFlowState.data, ...result.capturedData };
+                        let nextState = { currentStepId: result.nextStepId, isComplete: result.isComplete };
 
-                        // Update State
-                        const newData = { ...currentFlowState.data, ...result.capturedData };
-
-                        console.log("Chat Route: Processing Step Result.");
-                        console.log("Chat Route: Captured Data from Engine:", JSON.stringify(result.capturedData));
-                        console.log("Chat Route: Merged Data to Save:", JSON.stringify(newData));
+                        // Booking node: reserve the slot before moving on
+                        const picked = result.capturedData?.booking;
+                        if (picked && currentNode?.type === 'booking') {
+                            try {
+                                const booking = await createBooking({
+                                    chatbot,
+                                    conversation,
+                                    date: picked.date,
+                                    time: picked.time,
+                                    config: currentNode.booking,
+                                    email: newData.email
+                                });
+                                messages = [{ text: `✅ Booked for **${formatSlotLabel(picked.date, picked.time)}**. See you then!`, options: [], type: 'message' }, ...messages];
+                                after(async () => {
+                                    await sendBookingEmails({ chatbot, booking });
+                                    await upsertLead({
+                                        chatbot, conversation,
+                                        email: newData.email,
+                                        booking: picked,
+                                        intent: true,
+                                        source: 'booking',
+                                        note: `Booked ${picked.date} ${picked.time}`
+                                    });
+                                });
+                            } catch (err) {
+                                if (err.code !== 'SLOT_TAKEN') throw err;
+                                // Slot taken meanwhile: stay on the booking node and offer fresh slots
+                                delete newData.booking;
+                                nextState = { currentStepId: currentFlowState.currentStepId, isComplete: false };
+                                messages = [{
+                                    ...engine.toMessage(currentFlowState.currentStepId, currentNode),
+                                    text: 'Sorry, that slot was just taken. Please pick another time.'
+                                }];
+                            }
+                        } else if (result.capturedData?.email && currentNode?.type === 'email') {
+                            // Email node answered: becomes a lead immediately
+                            after(() => upsertLead({
+                                chatbot, conversation,
+                                email: result.capturedData.email,
+                                source: 'flow',
+                                note: message
+                            }));
+                        }
 
                         await updateConversation(conversation.id, {
-                            flowState: {
-                                currentStepId: result.nextStepId,
-                                isComplete: result.isComplete,
-                                data: newData
-                            },
+                            flowState: { ...nextState, data: newData },
                             // Always update persisted data to ensure we don't lose emails if flow drops
                             capturedData: newData
                         });
 
-                        // Set response flag specifically from this result
-                        conversation.flowState = { isComplete: result.isComplete };
+                        flowComplete = nextState.isComplete;
+                        flowResponse = messages;
 
-                        if (result.isComplete) {
-                            await updateConversation(conversation.id, {
-                                capturedData: newData
-                            });
-
-                            // Inject transition message if last message didn't already say it
-                            if (!flowResponse) flowResponse = [];
+                        if (flowComplete) {
                             const lastMsg = flowResponse[flowResponse.length - 1];
-                            const transitionText = "What you want to ask next?";
-
-                            if (!lastMsg || !lastMsg.text.includes(transitionText)) {
-                                flowResponse.push({
-                                    text: transitionText,
-                                    options: [],
-                                    type: 'text'
-                                });
+                            const transitionText = 'What you want to ask next?';
+                            if (!lastMsg || !lastMsg.text?.includes(transitionText)) {
+                                flowResponse = [...flowResponse, { text: transitionText, options: [], type: 'text' }];
                             }
-                        }
-                    } else if (result.error) {
-                        console.error("Flow error:", result.error);
-                        // Return error as message so user sees something
-                        flowResponse = [{ text: "Error: " + result.error, options: [] }];
-                    } else {
-                        // Success but no messages? (Maybe end of flow without text?)
-                        // Do nothing, let it fall through? 
-                        // Or say "Flow Complete".
-                        // If isComplete is true and no message, maybe we are done.
-                        if (result.isComplete && (!result.messages || result.messages.length === 0)) {
-                            // Optional: flowResponse = [{ text: "Conversation ended.", options: [] }];
                         }
                     }
                 }
@@ -238,31 +228,27 @@ export async function POST(request, { params }) {
 
         // If Flow produced a response (Array), return it.
         if (flowResponse) {
-            let lastMsg = null;
-            // Save all messages to DB
-            for (const msg of flowResponse) {
-                const flowMessage = {
-                    role: 'assistant',
-                    content: msg.text,
-                    options: msg.options, // Save options to DB message
-                    type: 'ai',
-                    timestamp: new Date().toISOString()
-                };
-                await addMessageToConversation(conversation.id, flowMessage);
-                try {
-                    await addRealtimeMessage(conversation.id, flowMessage);
-                } catch (e) {
-                    console.error(e);
-                }
-                lastMsg = flowMessage;
-            }
+            const enriched = await withSlots(chatbotId, flowResponse);
+            const saved = enriched.map((msg, i) => ({
+                role: 'assistant',
+                content: msg.text,
+                options: msg.options || [],
+                type: 'ai',
+                flowType: msg.type || 'message',
+                timestamp: new Date(Date.now() + i).toISOString()
+            }));
+
+            await Promise.all([
+                addMessagesToConversation(conversation.id, saved),
+                ...saved.map(m => syncRealtime(conversation.id, m))
+            ]);
 
             return NextResponse.json({
                 success: true,
                 data: {
-                    messages: flowResponse, // Return Array of objects {text, options}
+                    messages: enriched.map(m => ({ text: m.text, options: m.options || [], type: m.type, slots: m.slots })),
                     conversationId: conversation.id,
-                    isFlowComplete: conversation.flowState?.isComplete || false
+                    isFlowComplete: flowComplete
                 }
             });
         }
@@ -272,17 +258,19 @@ export async function POST(request, { params }) {
         // =================================================================================
 
         // STOP if this was an Init Trigger that failed to produce a Flow Response
-        if (trigger === 'init_flow' && !flowResponse) {
-            // DEBUG INFO
-            const debugInfo = `StartID: ${flowData.startNodeId}, NodeCount: ${Object.keys(flowData.nodes || {}).length}, IDs: ${Object.keys(flowData.nodes || {}).slice(0, 3).join(',')}`;
-
+        if (trigger === 'init_flow') {
             return NextResponse.json({
                 success: true,
                 data: {
-                    message: `Flow Error: Start Node Not Found. (Debug: ${debugInfo})`,
+                    message: chatbot.welcomeMessage || 'Hello! How can I help you today?',
                     conversationId: conversation.id
                 }
             });
+        }
+
+        // Free-text messages may carry contact details or buying intent
+        if (!flowHandledMessage) {
+            after(() => captureLeadFromMessage({ chatbot, conversation, message, source: 'chat' }));
         }
 
         // Section Tone & Scope Filtering
@@ -337,21 +325,18 @@ export async function POST(request, { params }) {
             aiResponse = `I'm having trouble responding right now. Please verify your AI provider API key in chatbot settings.`;
         }
 
-        // Add AI message to conversation
         const aiMessage = {
             role: 'assistant',
             content: aiResponse,
             type: 'ai',
             timestamp: new Date().toISOString()
         };
-        await addMessageToConversation(conversation.id, aiMessage);
 
-        // Sync to Realtime DB
-        try {
-            await addRealtimeMessage(conversation.id, aiMessage);
-        } catch (e) {
-            console.error('Realtime DB sync failed:', e);
-        }
+        // Persist after responding: the visitor doesn't wait on the writes
+        after(() => Promise.all([
+            addMessageToConversation(conversation.id, aiMessage),
+            syncRealtime(conversation.id, aiMessage)
+        ]));
 
         return NextResponse.json({
             success: true,

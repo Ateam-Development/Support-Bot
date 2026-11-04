@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, X, MessageCircle, Home, MessageSquare, Headset } from 'lucide-react';
+import { Send, X, MessageCircle, Home, MessageSquare, Headset, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToMessages } from '@/lib/firebase-realtime';
 import './widget.css';
@@ -164,6 +164,8 @@ const ChatWidget = ({ chatbotId }) => {
                         role: 'assistant',
                         content: m.text,
                         options: m.options,
+                        type: m.type,
+                        slots: m.slots,
                         // If this is the LAST message and flow is complete, show sections
                         showSections: (i === data.data.messages.length - 1) && data.data.isFlowComplete
                     }));
@@ -282,8 +284,8 @@ const ChatWidget = ({ chatbotId }) => {
         setTimeout(scroll, 500);
     };
 
-    const handleOptionClick = async (optionText) => {
-        const userMsg = { id: Date.now(), role: 'user', content: optionText };
+    const handleOptionClick = async (optionText, displayText = optionText) => {
+        const userMsg = { id: Date.now(), role: 'user', content: displayText };
         setAiMessages(prev => [...prev, userMsg]);
         setIsAiTyping(true);
 
@@ -303,6 +305,7 @@ const ChatWidget = ({ chatbotId }) => {
 
             if (data.success) {
                 setAiConversationId(data.data.conversationId);
+                localStorage.setItem(`oneminute_conv_${chatbotId}`, data.data.conversationId);
 
                 if (data.data.isFlowComplete) {
                     localStorage.setItem(`oneminute_flow_complete_${chatbotId}`, 'true');
@@ -313,7 +316,10 @@ const ChatWidget = ({ chatbotId }) => {
                         id: `${Date.now()}-${i}`, // Ensure unique ID
                         role: 'assistant',
                         content: m.text,
-                        options: m.options
+                        options: m.options,
+                        type: m.type,
+                        slots: m.slots,
+                        showSections: (i === data.data.messages.length - 1) && data.data.isFlowComplete
                     }));
                     setAiMessages(prev => [...prev, ...newMsgs]);
                 } else if (data.data.message) {
@@ -368,6 +374,8 @@ const ChatWidget = ({ chatbotId }) => {
                         role: 'assistant',
                         content: m.text,
                         options: m.options,
+                        type: m.type,
+                        slots: m.slots,
                         showSections: (i === data.data.messages.length - 1) && data.data.isFlowComplete
                     }));
                     setAiMessages(prev => [...prev, ...newMsgs]);
@@ -442,6 +450,8 @@ const ChatWidget = ({ chatbotId }) => {
 
     if (!config) return null;
 
+    const lastBookingId = [...aiMessages].reverse().find(m => m.type === 'booking')?.id;
+
     return (
         <div className="widget-container" style={currentTheme}>
             <AnimatePresence mode="wait">
@@ -479,7 +489,9 @@ const ChatWidget = ({ chatbotId }) => {
                         <div className="widget-header">
                             <div className="widget-header-content">
                                 <div className="widget-avatar-small">
-                                    {activeTab === 'home' ?
+                                    {activeTab === 'home' && config.branding?.logoUrl ? (
+                                        <img src={config.branding.logoUrl} alt={config.branding.name} className="widget-avatar-logo" />
+                                    ) : activeTab === 'home' ?
                                         <MessageCircle size={22} color={isWhiteTheme ? primaryColor : "white"} strokeWidth={2} /> :
                                         <Headset size={22} color={isWhiteTheme ? primaryColor : "white"} strokeWidth={2} />
                                     }
@@ -585,6 +597,15 @@ const ChatWidget = ({ chatbotId }) => {
                                                                 Submit
                                                             </button>
                                                         </div>
+                                                    )}
+
+                                                    {msg.type === 'booking' && (
+                                                        <BookingPicker
+                                                            slots={msg.slots || []}
+                                                            primaryColor={primaryColor}
+                                                            disabled={isAiTyping || msg.id !== lastBookingId}
+                                                            onBook={(date, time, label) => handleOptionClick(`${date} ${time}`, `📅 ${label}`)}
+                                                        />
                                                     )}
 
                                                     {/* Show Sections on Welcome Message OR when explicitly requested */}
@@ -761,10 +782,19 @@ const ChatWidget = ({ chatbotId }) => {
                             </button>
                         </div>
 
-                        {/* Footer */}
-                        <div className="widget-footer">
-                            Powered by Adeptimize Solutions
-                        </div>
+                        {/* Footer (white-label aware) */}
+                        {!config.branding?.hidePoweredBy && (
+                            <div className="widget-footer">
+                                Powered by{' '}
+                                {config.branding?.url ? (
+                                    <a href={config.branding.url} target="_blank" rel="noopener noreferrer" className="widget-footer-link">
+                                        {config.branding.name}
+                                    </a>
+                                ) : (
+                                    config.branding?.name || 'Adeptimize Solutions'
+                                )}
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -773,3 +803,66 @@ const ChatWidget = ({ chatbotId }) => {
 };
 
 export default ChatWidget;
+
+const formatTime = (hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+function BookingPicker({ slots, primaryColor, disabled, onBook }) {
+    const [dayIndex, setDayIndex] = useState(0);
+    const [time, setTime] = useState(null);
+
+    if (slots.length === 0) {
+        return <div className="widget-booking-empty"><CalendarDays size={16} /> No open slots right now. Please check back later.</div>;
+    }
+
+    const day = slots[Math.min(dayIndex, slots.length - 1)];
+
+    return (
+        <div className={`widget-booking ${disabled ? 'is-disabled' : ''}`}>
+            <div className="widget-booking-days">
+                {slots.map((s, i) => {
+                    const [weekday, ...rest] = s.label.split(' ');
+                    const active = i === dayIndex;
+                    return (
+                        <button
+                            key={s.date}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => { setDayIndex(i); setTime(null); }}
+                            className={`widget-booking-day ${active ? 'active' : ''}`}
+                            style={active ? { backgroundColor: primaryColor, borderColor: primaryColor, color: 'white' } : {}}
+                        >
+                            <span>{weekday.replace(',', '')}</span>
+                            <strong>{rest.join(' ')}</strong>
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="widget-booking-times">
+                {day.times.map(t => (
+                    <button
+                        key={t}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => setTime(t)}
+                        className={`widget-booking-time ${time === t ? 'active' : ''}`}
+                        style={time === t ? { backgroundColor: primaryColor, borderColor: primaryColor, color: 'white' } : {}}
+                    >
+                        {formatTime(t)}
+                    </button>
+                ))}
+            </div>
+            <button
+                type="button"
+                disabled={disabled || !time}
+                onClick={() => onBook(day.date, time, `${day.label}, ${formatTime(time)}`)}
+                className="widget-form-submit"
+                style={{ backgroundColor: primaryColor, opacity: disabled || !time ? 0.5 : 1 }}
+            >
+                {time ? `Book ${day.label}, ${formatTime(time)}` : 'Select a time'}
+            </button>
+        </div>
+    );
+}

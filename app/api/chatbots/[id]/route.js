@@ -3,6 +3,37 @@ import { verifyAuth } from '@/lib/auth-middleware';
 import { getChatbotById, updateChatbot, deleteChatbot } from '@/lib/db';
 import { verifyChatbotOwnership, handleApiError } from '@/lib/api-utils';
 
+const isHttpsUrl = (value) => {
+    try {
+        return new URL(value).protocol === 'https:';
+    } catch {
+        return false;
+    }
+};
+
+/**
+ * Sanitize white-label settings. Returns { value } or { error }.
+ */
+function parseWhiteLabel(input) {
+    const agencyName = String(input.agencyName || '').trim().slice(0, 80);
+    const agencyWebsite = String(input.agencyWebsite || '').trim();
+    const logoUrl = String(input.logoUrl || '').trim();
+
+    if (agencyWebsite && !isHttpsUrl(agencyWebsite)) return { error: 'Agency website must start with https://' };
+    if (logoUrl && !isHttpsUrl(logoUrl)) return { error: 'Logo URL must start with https://' };
+    if (input.enabled && !agencyName && !input.hidePoweredBy) return { error: 'Add an agency name, or hide the "Powered by" line' };
+
+    return {
+        value: {
+            enabled: !!input.enabled,
+            agencyName,
+            agencyWebsite,
+            logoUrl,
+            hidePoweredBy: !!input.hidePoweredBy
+        }
+    };
+}
+
 /**
  * GET /api/chatbots/:id
  * Get specific chatbot details
@@ -48,7 +79,7 @@ export async function PUT(request, { params }) {
         const { user } = authResult;
         const { id } = await params;
         const body = await request.json();
-        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, mistralApiKey, systemMessage, model, provider, modelName, config, allowedOrigins } = body;
+        const { name, primaryColor, welcomeMessage, theme, openaiApiKey, geminiApiKey, mistralApiKey, systemMessage, model, provider, modelName, config, allowedOrigins, whiteLabel } = body;
 
         // Verify ownership
         const ownershipResult = await verifyChatbotOwnership(id, user.uid);
@@ -72,6 +103,17 @@ export async function PUT(request, { params }) {
         if (provider !== undefined) updates.provider = provider;
         if (modelName !== undefined) updates.modelName = modelName;
         if (config) updates.config = { ...chatbot.config, ...config };
+
+        if (whiteLabel && typeof whiteLabel === 'object') {
+            const parsed = parseWhiteLabel(whiteLabel);
+            if (parsed.error) {
+                return NextResponse.json(
+                    { success: false, error: 'BadRequest', message: parsed.error },
+                    { status: 400 }
+                );
+            }
+            updates.whiteLabel = parsed.value;
+        }
 
         // Allowed Origins for CORS/Security
         if (allowedOrigins && Array.isArray(allowedOrigins)) {

@@ -793,3 +793,104 @@
         padding-bottom: max(20px, env(safe-area-inset-bottom));
     }
 }
+/* --- Booking picker --- */
+.widget-booking {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.widget-booking.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.widget-booking-days {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+}
+
+.widget-booking-day {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 58px;
+    padding: 8px 6px;
+    border-radius: 12px;
+    border: 1px solid var(--w-border);
+    background: var(--w-input-bg);
+    color: var(--w-text);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.widget-booking-day span {
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.widget-booking-day strong {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.widget-booking-times {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    max-height: 168px;
+    overflow-y: auto;
+}
+
+.widget-booking-time {
+    padding: 8px 4px;
+    border-radius: 10px;
+    border: 1px solid var(--w-border);
+    background: transparent;
+    color: var(--w-text);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.widget-booking-day:hover,
+.widget-booking-time:hover {
+    background: var(--w-hover);
+}
+
+.widget-booking-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--w-text-sec);
+}
+
+/* --- White-label --- */
+.widget-footer-link {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.widget-footer-link:hover {
+    text-decoration: underline;
+}
+
+.widget-avatar-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}

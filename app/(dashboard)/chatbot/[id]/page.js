@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import ChatArea from '@/components/ChatArea';
-import { RefreshCw, Copy, Check, Save, Loader2, Palette, CodeXml, Bot, Sparkles, Cpu, Key, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Copy, Check, Save, Loader2, Palette, CodeXml, Bot, Sparkles, Cpu, Key, ShieldCheck, BadgeCheck } from 'lucide-react';
 import Loader from '@/components/Loader';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +29,8 @@ export default function ChatbotPage() {
     const [geminiApiKey, setGeminiApiKey] = useState('');
     const [mistralApiKey, setMistralApiKey] = useState('');
     const [systemMessage, setSystemMessage] = useState('');
+    const [whiteLabel, setWhiteLabel] = useState({ enabled: false, agencyName: '', agencyWebsite: '', logoUrl: '', hidePoweredBy: false });
+    const [saveError, setSaveError] = useState('');
 
     const colors = [
         { name: 'blue', class: 'bg-blue-600' },
@@ -144,6 +146,7 @@ export default function ChatbotPage() {
                 setGeminiApiKey(bot.geminiApiKey || '');
                 setMistralApiKey(bot.mistralApiKey || '');
                 setSystemMessage(bot.systemMessage || 'You are a helpful assistant.');
+                setWhiteLabel(wl => ({ ...wl, ...bot.whiteLabel }));
             } else {
                 router.push('/');
             }
@@ -165,6 +168,7 @@ export default function ChatbotPage() {
     const saveChanges = async () => {
         setSaving(true);
         setSavedSuccess(false);
+        setSaveError('');
         try {
             const token = await user.getIdToken();
             const res = await fetch(`/api/chatbots/${id}`, {
@@ -184,7 +188,8 @@ export default function ChatbotPage() {
                     openaiApiKey,
                     geminiApiKey,
                     mistralApiKey,
-                    systemMessage
+                    systemMessage,
+                    whiteLabel
                 })
             });
 
@@ -193,6 +198,8 @@ export default function ChatbotPage() {
                 setChatbot(data.data);
                 setSavedSuccess(true);
                 setTimeout(() => setSavedSuccess(false), 3000);
+            } else {
+                setSaveError(data.message || 'Failed to save settings');
             }
         } catch (error) {
             console.error('Failed to update:', error);
@@ -227,6 +234,11 @@ export default function ChatbotPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {saveError && (
+                        <span className="text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
+                            {saveError}
+                        </span>
+                    )}
                     {savedSuccess && (
                         <span className="text-xs text-green-400 flex items-center gap-1.5 bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20">
                             <Check className="w-3.5 h-3.5" /> Changes Saved
@@ -498,7 +510,80 @@ export default function ChatbotPage() {
                         </div>
                     </div>
 
-                    {/* 4. System Message & Instructions */}
+                    {/* 4. White-label */}
+                    <div className="bg-[#0a0a0a] p-6 rounded-2xl border border-white/10 shadow-lg">
+                        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-xs tracking-wider uppercase text-gray-400">
+                            <BadgeCheck className="w-4 h-4" />
+                            White-label
+                        </h3>
+
+                        <label className="flex items-start gap-3 mb-5 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={whiteLabel.enabled}
+                                onChange={(e) => setWhiteLabel(wl => ({ ...wl, enabled: e.target.checked }))}
+                                className="mt-0.5 w-4 h-4 accent-blue-600"
+                            />
+                            <span className="text-sm text-gray-200">Use my brand instead of Adeptimize Solutions (widget footer and header logo)</span>
+                        </label>
+
+                        <div className={`space-y-4 transition-opacity ${whiteLabel.enabled ? '' : 'opacity-40 pointer-events-none'}`}>
+                            <div>
+                                <label className="text-xs font-medium text-gray-400 block mb-2">Agency name</label>
+                                <input
+                                    type="text"
+                                    maxLength={80}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                    value={whiteLabel.agencyName}
+                                    onChange={(e) => setWhiteLabel(wl => ({ ...wl, agencyName: e.target.value }))}
+                                    placeholder="Your Agency"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-400 block mb-2">Agency website (https://)</label>
+                                <input
+                                    type="url"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                    value={whiteLabel.agencyWebsite}
+                                    onChange={(e) => setWhiteLabel(wl => ({ ...wl, agencyWebsite: e.target.value }))}
+                                    placeholder="https://youragency.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-400 block mb-2">Logo URL (https://, optional)</label>
+                                <input
+                                    type="url"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                    value={whiteLabel.logoUrl}
+                                    onChange={(e) => setWhiteLabel(wl => ({ ...wl, logoUrl: e.target.value }))}
+                                    placeholder="https://youragency.com/logo.png"
+                                />
+                                <p className="text-[11px] text-gray-500 mt-1.5">Shown as the bot avatar in the widget header.</p>
+                            </div>
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={whiteLabel.hidePoweredBy}
+                                    onChange={(e) => setWhiteLabel(wl => ({ ...wl, hidePoweredBy: e.target.checked }))}
+                                    className="w-4 h-4 accent-blue-600"
+                                />
+                                <span className="text-sm text-gray-200">Hide the "Powered by" line completely</span>
+                            </label>
+                        </div>
+
+                        <div className="mt-5 pt-4 border-t border-white/5 text-sm text-gray-400">
+                            Widget footer preview:{' '}
+                            {whiteLabel.enabled && whiteLabel.hidePoweredBy ? (
+                                <span className="text-gray-600 italic">hidden</span>
+                            ) : (
+                                <span className="text-white font-semibold">
+                                    Powered by {whiteLabel.enabled && whiteLabel.agencyName.trim() ? whiteLabel.agencyName.trim() : 'Adeptimize Solutions'}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 5. System Message & Instructions */}
                     <div className="bg-[#0a0a0a] p-6 rounded-2xl border border-white/10 shadow-lg">
                         <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-xs tracking-wider uppercase text-gray-400">
                             <Sparkles className="w-4 h-4" />
@@ -517,7 +602,7 @@ export default function ChatbotPage() {
                         </div>
                     </div>
 
-                    {/* 5. Embed Code */}
+                    {/* 6. Embed Code */}
                     <div className="bg-[#0a0a0a] p-6 rounded-2xl border border-white/10 shadow-lg">
                         <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-xs tracking-wider uppercase text-gray-400">
                             <CodeXml className="w-4 h-4" />

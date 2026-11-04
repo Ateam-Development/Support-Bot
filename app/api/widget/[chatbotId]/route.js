@@ -27,6 +27,15 @@ export async function GET(request, { params }) {
         const flow = await getFlow(chatbotId);
         const hasActiveFlow = flow && flow.enabled !== false;
 
+        // Branding shown in the widget footer/header
+        const wl = chatbot.whiteLabel?.enabled ? chatbot.whiteLabel : null;
+        const branding = {
+            name: wl?.agencyName || 'Adeptimize Solutions',
+            url: wl ? (wl.agencyWebsite || null) : null,
+            logoUrl: wl?.logoUrl || null,
+            hidePoweredBy: !!wl?.hidePoweredBy
+        };
+
         // Return public configuration (no sensitive data like API keys)
         const publicConfig = {
             id: chatbot.id,
@@ -39,7 +48,8 @@ export async function GET(request, { params }) {
                 name: s.name,
                 description: s.description
             })),
-            hasFlow: hasActiveFlow
+            hasFlow: hasActiveFlow,
+            branding
         };
 
         return NextResponse.json({
