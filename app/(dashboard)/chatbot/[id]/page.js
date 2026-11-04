@@ -5,6 +5,7 @@ import { RefreshCw, Copy, Check, Save, Loader2, Palette, CodeXml, Bot, Sparkles,
 import Loader from '@/components/Loader';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { widgetSnippet } from '@/lib/widget-snippet';
 
 export default function ChatbotPage() {
     const params = useParams();
@@ -210,7 +211,7 @@ export default function ChatbotPage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(`<script src="https://oneminute-support.vercel.app/widget.js" data-id="${id}" defer></script>`);
+        navigator.clipboard.writeText(widgetSnippet(id));
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -610,7 +611,7 @@ export default function ChatbotPage() {
                         </h3>
                         <div className="bg-black/50 p-4 rounded-xl border border-white/5 relative group mb-4">
                             <code className="text-xs text-gray-400 font-mono break-all line-clamp-4 leading-relaxed p-1 block">
-                                &lt;script src="https://oneminute-support.vercel.app/widget.js" data-id="{id}" defer&gt;&lt;/script&gt;
+                                {widgetSnippet(id)}
                             </code>
                             <button
                                 onClick={handleCopy}

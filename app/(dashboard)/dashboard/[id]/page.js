@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Loader from '@/components/Loader';
 import { useAuth } from '@/contexts/AuthContext';
+import { widgetSnippet } from '@/lib/widget-snippet';
 
 export default function DashboardPage() {
     const params = useParams();
@@ -95,7 +96,7 @@ export default function DashboardPage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(`<script src="https://oneminute-support.vercel.app/widget.js" data-id="${id}" defer></script>`);
+        navigator.clipboard.writeText(widgetSnippet(id));
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -267,7 +268,7 @@ export default function DashboardPage() {
 
                         <div className="bg-black/50 rounded-xl border border-white/5 p-4 relative group">
                             <code className="text-xs text-gray-400 font-mono break-all line-clamp-3">
-                                &lt;script src="https://oneminute-support.vercel.app/widget.js" data-id="{id}" defer&gt;&lt;/script&gt;
+                                {widgetSnippet(id)}
                             </code>
                             <button
                                 onClick={handleCopy}
