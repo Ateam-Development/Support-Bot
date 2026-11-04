@@ -86,6 +86,20 @@ export default function SettingsPage() {
         }
     };
 
+    // Chatbot name (shown in this card) is saved on the selected chatbot
+    const saveChatbotName = async () => {
+        const newName = tempWorkspaceName.trim();
+        if (!newName || !selectedChatbot) return;
+
+        try {
+            await updateChatbot(selectedChatbot.id, { name: newName });
+            setEditingWorkspaceName(false);
+        } catch (error) {
+            console.error('Error saving chatbot name:', error);
+            alert('Failed to save name. Please try again.');
+        }
+    };
+
     // Chatbot Origin Handlers
     const handleOriginInputChange = (chatbotId, field, value) => {
         setOriginInputs(prev => ({
@@ -197,7 +211,7 @@ export default function SettingsPage() {
                     </h2>
 
                     <div className="max-w-xl">
-                        <label className="block text-sm font-medium text-gray-400 mb-2 uppercase tracking-wider text-xs">Workspace Name</label>
+                        <label className="block text-sm font-medium text-gray-400 mb-2 uppercase tracking-wider text-xs">Chatbot Name</label>
                         <div className="flex gap-3">
                             {editingWorkspaceName ? (
                                 <>
@@ -205,8 +219,9 @@ export default function SettingsPage() {
                                         type="text"
                                         value={tempWorkspaceName}
                                         onChange={(e) => setTempWorkspaceName(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && saveChatbotName()}
                                         className="flex-1 bg-black/50 border border-blue-500/50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                        placeholder="Enter workspace name"
+                                        placeholder="Enter chatbot name"
                                         autoFocus
                                     />
                                     <button
@@ -219,7 +234,7 @@ export default function SettingsPage() {
                                     <button
                                         onClick={() => {
                                             setEditingWorkspaceName(false);
-                                            setTempWorkspaceName(workspace.name);
+                                            setTempWorkspaceName(selectedChatbot?.name || '');
                                         }}
                                         className="bg-white/5 hover:bg-white/10 text-gray-400 px-4 rounded-xl flex items-center justify-center transition-colors"
                                         title="Cancel"
@@ -231,7 +246,11 @@ export default function SettingsPage() {
                                 <div className="flex-1 flex justify-between items-center bg-black/20 border border-white/10 rounded-xl px-4 py-3 group hover:border-white/20 transition-all">
                                     <span className="text-white font-medium text-lg">{selectedChatbot?.name || 'Loading...'}</span>
                                     <button
-                                        onClick={() => setEditingWorkspaceName(true)}
+                                        onClick={() => {
+                                            setTempWorkspaceName(selectedChatbot?.name || '');
+                                            setEditingWorkspaceName(true);
+                                        }}
+                                        disabled={!selectedChatbot}
                                         className="text-xs bg-white/5 hover:bg-white/10 text-gray-300 opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-lg transition-all"
                                     >
                                         Edit
@@ -263,7 +282,7 @@ export default function SettingsPage() {
                                             className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg"
                                             style={{ backgroundColor: bot.primaryColor || '#3B82F6', color: '#fff' }}
                                         >
-                                            {bot.name.substring(0, 2).toUpperCase()}
+                                            {(bot.name || '?').substring(0, 2).toUpperCase()}
                                         </div>
                                         <div>
                                             <h3 className="text-white font-bold text-lg">{bot.name}</h3>
