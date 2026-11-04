@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToMessages, subscribeToMetadata } from '@/lib/firebase-realtime';
+import { subscribeToMetadata } from '@/lib/firebase-realtime';
 import { subscribeToConversations } from '@/lib/db-client';
 import ConversationList from '@/components/conversations/ConversationList';
 import ConversationDetail from '@/components/conversations/ConversationDetail';
@@ -59,18 +59,39 @@ export default function ConversationsPage() {
     }, [chatbotId, chatbots]);
 
     // Real-time listener for selected conversation messages
+    // Firestore (via the API) is the source of truth; Realtime DB only holds messages
+    // synced after it was set up, so polling the saved conversation shows the full thread.
     useEffect(() => {
-        if (!selectedConversation?.id) return;
+        if (!selectedConversation?.id || !user) return;
+        const conversationId = selectedConversation.id;
+        let stopped = false;
 
-        const unsubscribe = subscribeToMessages(selectedConversation.id, (messages) => {
-            setSelectedConversation(prev => ({
-                ...prev,
-                messages: messages
-            }));
-        });
+        const refresh = async () => {
+            if (document.visibilityState !== 'visible') return;
+            try {
+                const token = await user.getIdToken();
+                const res = await fetch(`/api/conversations/detail/${conversationId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    cache: 'no-store'
+                });
+                const data = await res.json();
+                if (stopped || !data.success) return;
+                setSelectedConversation(prev => (
+                    prev?.id === conversationId && (prev.messages?.length || 0) !== (data.data.messages?.length || 0)
+                        ? { ...prev, messages: data.data.messages }
+                        : prev
+                ));
+            } catch (error) {
+                console.error('Failed to refresh conversation:', error);
+            }
+        };
 
-        return () => unsubscribe();
-    }, [selectedConversation?.id]);
+        const timer = setInterval(refresh, 3000);
+        return () => {
+            stopped = true;
+            clearInterval(timer);
+        };
+    }, [selectedConversation?.id, user]);
 
     // Real-time listener for conversation metadata (unread counts)
     // Removed: Firestore subscribeToConversations handles this now!
@@ -165,9 +186,10 @@ export default function ConversationsPage() {
             });
 
             const data = await res.json();
-            if (data.success) {
-                // Real-time listener will update the UI automatically
-                // No need to manually update state
+            if (data.success && data.data?.messages) {
+                setSelectedConversation(prev => prev?.id === data.data.id ? { ...prev, messages: data.data.messages } : prev);
+            } else if (!data.success) {
+                throw new Error(data.message || 'Failed to send message');
             }
         } catch (error) {
             console.error('Failed to send message:', error);
