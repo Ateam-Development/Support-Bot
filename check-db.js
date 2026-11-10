@@ -21,6 +21,8 @@ async function checkDatabase() {
         // Check chatbots
         const chatbotsSnapshot = await db.collection('chatbots').get();
         console.log(`Found ${chatbotsSnapshot.size} chatbots:`);
+
+
         chatbotsSnapshot.forEach(doc => {
             const data = doc.data();
             console.log(`  - ID: ${doc.id}, Name: ${data.name}, Owner: ${data.userId}`);
