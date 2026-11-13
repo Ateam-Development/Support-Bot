@@ -1,6 +1,6 @@
 const { NextResponse } = require('next/server');
 const { verifyAuth } = require('@/lib/auth-middleware');
-const { updateSection } = require('@/lib/db');
+const { updateSection, deleteSection, getSectionById } = require('@/lib/db');
 const { verifyChatbotOwnership, handleApiError } = require('@/lib/api-utils');
 
 /**
@@ -19,7 +19,17 @@ export async function PUT(request, { params }) {
         const ownershipResult = await verifyChatbotOwnership(chatbotId, user.uid);
         if (ownershipResult.error) return ownershipResult.error;
 
-        const updatedSection = await updateSection(sectionId, sectionData);
+        const existing = await getSectionById(sectionId);
+        if (!existing || existing.chatbotId !== chatbotId) {
+            return NextResponse.json({ success: false, error: 'NotFound', message: 'Section not found' }, { status: 404 });
+        }
+
+        const allowed = {};
+        ['name', 'description', 'sources', 'tone', 'scope'].forEach(key => {
+            if (sectionData[key] !== undefined) allowed[key] = sectionData[key];
+        });
+
+        const updatedSection = await updateSection(sectionId, allowed);
 
         return NextResponse.json({
             success: true,
@@ -44,6 +54,11 @@ export async function DELETE(request, { params }) {
 
         const ownershipResult = await verifyChatbotOwnership(chatbotId, user.uid);
         if (ownershipResult.error) return ownershipResult.error;
+
+        const existing = await getSectionById(sectionId);
+        if (!existing || existing.chatbotId !== chatbotId) {
+            return NextResponse.json({ success: false, error: 'NotFound', message: 'Section not found' }, { status: 404 });
+        }
 
         await deleteSection(sectionId);
 

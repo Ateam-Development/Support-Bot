@@ -89,13 +89,11 @@ export default function SectionsPage() {
 
         try {
             const token = await user.getIdToken();
-            const res = await fetch(`/api/sections/${id}`, {
+            const res = await fetch(`/api/sections/${id}/${sectionId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ sectionId })
+                }
             });
 
             const data = await res.json();
@@ -119,17 +117,17 @@ export default function SectionsPage() {
     const handleSaveSection = async (sectionData) => {
         const token = await user.getIdToken();
         const method = editingSection ? 'PUT' : 'POST';
-        const body = editingSection ? { ...sectionData, sectionId: editingSection.id } : sectionData;
+        const url = editingSection ? `/api/sections/${id}/${editingSection.id}` : `/api/sections/${id}`;
 
-        const res = await fetch(`/api/sections/${id}`, {
+        const res = await fetch(url, {
             method,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(sectionData)
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ success: false, message: `Server error (${res.status})` }));
         if (!data.success) throw new Error(data.message || 'Failed to save section');
         fetchData(); // Refresh list
     };

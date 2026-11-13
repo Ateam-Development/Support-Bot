@@ -2,7 +2,6 @@ const { NextResponse } = require('next/server');
 const { verifyAuth } = require('@/lib/auth-middleware');
 const { addKnowledge } = require('@/lib/db');
 const { verifyChatbotOwnership, handleApiError } = require('@/lib/api-utils');
-const { cleanAndFormatContent } = require('@/lib/llm');
 const { indexKnowledgeItem } = require('@/lib/rag');
 
 /**
@@ -28,14 +27,8 @@ export async function POST(request, { params }) {
             );
         }
 
-        // 1. Clean & structure text using configured LLM if significant length
-        let cleanedContent = text;
-        if (text.length > 300) {
-            const formatted = await cleanAndFormatContent(text, ownershipResult.chatbot);
-            cleanedContent = formatted || text || '';
-        }
-
-        cleanedContent = cleanedContent || text || '';
+        // 1. Manual text is stored as typed; rewriting it with an LLM could drop names or facts
+        const cleanedContent = String(text).trim();
 
         // 2. Save knowledge to Firestore
         const knowledge = await addKnowledge(chatbotId, {
