@@ -59,7 +59,7 @@ export async function POST(request) {
             contextChunks = await retrieveContext(chatbotId, message, {
                 allowedKnowledgeIds,
                 topK: 5,
-                provider: chatbot.provider || chatbot.model || 'gemini'
+                chatbot
             });
         } catch (ragErr) {
             console.error('[RAG-TEST-CHAT] Error retrieving context:', ragErr);

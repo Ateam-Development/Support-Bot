@@ -122,7 +122,8 @@ export async function POST(request, { params }) {
         try {
             contextChunks = await retrieveContext(chatbotId, message, {
                 allowedKnowledgeIds,
-                topK: 5
+                topK: 5,
+                chatbot
             });
         } catch (ragErr) {
             console.error('[WIDGET-RAG] Context retrieval error:', ragErr);
